@@ -1,10 +1,15 @@
 if exists("g:loaded_pathconfig") || &cp
-	finish
+	"finish
 endif
 let g:loaded_pathconfig	= 1
 let s:keepcpo           = &cpo
 set cpo&vim
 """""""""""""""""""""""""""""""""""""""""""""
+" initialize python
+python << EOF
+import vim
+import os, fnmatch
+EOF
 
 " global variables
 if !exists('g:pathconfig_path_configs')
@@ -18,8 +23,19 @@ augroup PathConfigAutoCmds
 augroup END
 
 " functions
-fun! ApplyConfig()
-	echo g:pathconfig_path_configs
+fun! s:ApplyConfig()
+python << EOF
+filepath = vim.eval('expand(\'<afile>:p\')')
+path_configs = vim.eval('g:pathconfig_path_configs')
+for pattern, config in path_configs:
+	if fnmatch.fnmatch(filepath, pattern):
+
+		if 'setlocals' in config:
+			for setting in config['setlocals']:
+				vim.command('exec \'setlocal %s\''%setting)
+
+	break
+EOF
 endfun
 
 """""""""""""""""""""""""""""""""""""""""""""
