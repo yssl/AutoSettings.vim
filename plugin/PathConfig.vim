@@ -31,8 +31,13 @@ for pattern, config in path_configs:
 	if fnmatch.fnmatch(filepath, pattern):
 
 		if 'setlocals' in config:
-			for setting in config['setlocals']:
-				vim.command('exec \'setlocal %s\''%setting)
+			for setparam in config['setlocals']:
+				vim.command('exec \'setlocal %s\''%setparam)
+
+		if 'localmaps' in config:
+			for mapdata in config['localmaps']:
+				for mapcmd in mapdata[0]:
+					vim.command('exec \'%s <buffer> %s %s\''%(mapcmd, mapdata[1], mapdata[2]))
 
 	break
 EOF
