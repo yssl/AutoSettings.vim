@@ -1,4 +1,4 @@
-# PathConfig.vim
+# AutoConfig.vim
 
 ```
 let py_cfg = {}
@@ -11,11 +11,13 @@ let py_cfg.setlocals = [
 	\'expandtab',
 	\'makeprg=stdbuf\ -i0\ -o0\ -e0\ python\ %',
 \]
-let g:pathconfig_configs = [
+let g:autoconfig_configs = [
 	\['[*.py]', py_cfg],
 \]
 
-let g:pathconfig_configs = [
+" or
+
+let g:autoconfig_configs = [
 	\['[*.py]',{
 		\'localmaps':[
 			\[['nnoremap', 'inoremap', 'cnoremap', 'vnoremap'], '<F9>', ':w<CR>:Make; echo \"END:0::\"<CR>']
