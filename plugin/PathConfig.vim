@@ -1,3 +1,8 @@
+" File:         plugin/PathConfig.vim
+" Description:  Change vim settings depending on the current file path.
+" Author:       yssl <http://github.com/yssl>
+" License:      MIT License
+
 if exists("g:loaded_pathconfig") || &cp
 	"finish
 endif
@@ -5,6 +10,7 @@ let g:loaded_pathconfig	= 1
 let s:keepcpo           = &cpo
 set cpo&vim
 """""""""""""""""""""""""""""""""""""""""""""
+
 " initialize python
 python << EOF
 import vim
@@ -12,8 +18,8 @@ import os, fnmatch
 EOF
 
 " global variables
-if !exists('g:pathconfig_path_configs')
-	let g:pathconfig_path_configs = []
+if !exists('g:pathconfig_configs')
+	let g:pathconfig_configs = []
 endif
 
 " autocmd
@@ -26,8 +32,8 @@ augroup END
 fun! s:ApplyConfig()
 python << EOF
 filepath = vim.eval('expand(\'<afile>:p\')')
-path_configs = vim.eval('g:pathconfig_path_configs')
-for pattern, config in path_configs:
+configs = vim.eval('g:pathconfig_configs')
+for pattern, config in configs:
 	if fnmatch.fnmatch(filepath, pattern):
 
 		if 'setlocals' in config:
