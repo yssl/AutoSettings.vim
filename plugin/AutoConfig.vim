@@ -4,7 +4,7 @@
 " License:      MIT License
 
 if exists("g:loaded_autoconfig") || &cp
-	"finish
+	finish
 endif
 let g:loaded_autoconfig	= 1
 let s:keepcpo           = &cpo
@@ -32,12 +32,12 @@ def getWinName(bufname, buftype):
 
 # config: python dictionary
 # ex) {
-#		\'localmaps':[
+#		\'localMaps':[
 #			\[['nnoremap', 'inoremap', 'cnoremap', 'vnoremap'], '<F9>', ':w<CR>:BuildAndViewTexPdf<CR>:call QuickfixCWindowError()<CR><C-l><C-l>'],
 #			\[['nnoremap', 'inoremap', 'cnoremap', 'vnoremap'], '<C-F9>', ':w<CR>:BuildTexPdf<CR>:call QuickfixCWindowError()<CR><C-l>'],
 #			\[['nnoremap'], '<Leader>fs', ':call Tex_ForwardSearchLaTeX()<CR>'],
 #		\],
-#		\'setlocals':[
+#		\'setLocals':[
 #			\'wrap',
 #			\'shiftwidth=4',
 #			\'expandtab',
@@ -49,19 +49,19 @@ def getWinName(bufname, buftype):
 # exec 'nnoremap <buffer> <expr> <Leader>sc ":echo expand(\"%:p\")\<CR>"'
 # exec 'nnoremap <buffer> <Leader>sc :echo expand("%:p")<CR>'
 def applyConfig(config):
-	if 'setlocals' in config:
-		for setparam in config['setlocals']:
+	if 'setLocals' in config:
+		for setparam in config['setLocals']:
 			vim.command('exec \'setlocal %s\''%setparam)
-	if 'localmaps' in config:
-		for mapdata in config['localmaps']:
+	if 'localMaps' in config:
+		for mapdata in config['localMaps']:
 			shortcut = mapdata[1]
 			command = mapdata[2]
 			for mapcmd in mapdata[0]:
 				if mapcmd[0]!='n':	# add <ESC> when non-normal mode mapping
 					command = '<ESC>'+command
 				vim.command('exec \'%s <buffer> %s %s\''%(mapcmd, shortcut, command))
-	if 'localmaps-expr' in config:
-		for mapdata in config['localmaps-expr']:
+	if 'localMapsExpr' in config:
+		for mapdata in config['localMapsExpr']:
 			shortcut = mapdata[1]
 			command = mapdata[2]
 			for mapcmd in mapdata[0]:
@@ -120,8 +120,14 @@ for patterns, config in buildconfigs:
 		if fnmatch.fnmatch(filepath, pattern):
 			matched_build_pattern = pattern
 			matched_build_config = config
+
+			# common config
+			if 'commonConfig' in config:
+				applyConfig(config['commonConfig'])
+
+			# specific config
 			if pattern not in current_pattern_configname:
-				current_configname = config['defaultconfig']
+				current_configname = config['defaultConfigName']
 				current_pattern_configname[pattern] = current_configname
 
 			current_config = config['configs'][current_configname]
@@ -155,7 +161,7 @@ print matched_build_pattern
 print ' '
 
 print 'Predefined Config Names in the Matched Pattern:'
-print matched_build_config['confignames']
+print matched_build_config['configNames']
 print ' '
 
 print 'Current Config Name for the Matched Pattern:'
