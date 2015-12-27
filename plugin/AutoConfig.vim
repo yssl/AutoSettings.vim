@@ -72,7 +72,7 @@ def applyConfig(config):
 matched_local_patterns = []
 matched_local_configs = []
 matched_build_pattern = ''
-matched_build_config = ''
+matched_build_config = {}
 current_pattern_configname = {}
 EOF
 
@@ -100,7 +100,7 @@ filepath = vim.eval('expand(\'<afile>:p\')')
 del matched_local_patterns[:]
 del matched_local_configs[:]
 matched_build_pattern = ''
-matched_build_config = ''
+matched_build_config = {}
 
 # localconfigs
 localconfigs = vim.eval('g:autoconfig_localconfigs')
@@ -161,16 +161,19 @@ print matched_build_pattern
 print ' '
 
 print 'Predefined Config Names in the Matched Pattern:'
-print matched_build_config['configNames']
+if 'configNames' in matched_build_config:
+	print matched_build_config['configNames']
 print ' '
 
 print 'Current Config Name for the Matched Pattern:'
-current_config_name = current_pattern_configname[matched_build_pattern]
-print current_config_name
+if matched_build_pattern in current_pattern_configname:
+	current_config_name = current_pattern_configname[matched_build_pattern]
+	print current_config_name
 print ' '
 
-print 'Build Config for the Matched Pattern & Current Config:'
-print matched_build_config['configs'][current_config_name]
+print 'Current Build Config:'
+if 'configs' in matched_build_config:
+	print matched_build_config['configs'][current_config_name]
 print ' '
 EOF
 endfun
