@@ -30,7 +30,7 @@ def getWinName(bufname, buftype):
 			winname = bufname
 	return winname
 
-# config: python dictionary
+# setting: vimscript dictionary
 # ex) {
 #		\'localMaps':[
 #			\[['nnoremap', 'inoremap', 'cnoremap', 'vnoremap'], '<F9>', ':w<CR>:BuildAndViewTexPdf<CR>:call QuickfixCWindowError()<CR><C-l><C-l>'],
@@ -69,6 +69,43 @@ def applySetting(setting):
 					command = command[:1]+'<ESC>'+command[1:]
 				vim.command('exec \'%s <buffer> <expr> %s \'%s\'\''%(mapcmd, shortcut, command))
 
+def applyBuildConfig(setting):
+	if 'buildConfigNames' in setting:
+		pass
+	if 'buildConfigs' in setting:
+		current_configname = setting['buildConfigNames'][0]
+		current_config = setting['buildConfigs'][current_configname]
+		applySetting(current_config)
+
+		## local setting for current file path & build configuration
+		#buildsettings = vim.eval('g:autosettings_for_build')
+		#matched = False
+		#for patterns, setting in buildsettings:
+		#	for pattern in patterns:
+		#		if fnmatch.fnmatch(filepath, pattern):
+		#			matched_build_pattern = pattern
+		#			matched_build_setting = setting
+		#
+		#			# common config
+		#			if 'commonConfig' in setting:
+		#				applySetting(setting['commonConfig'])
+		#
+		#			# specific config
+		#			if pattern not in current_pattern_configname:
+		#				current_configname = setting['defaultConfigName']
+		#				current_pattern_configname[pattern] = current_configname
+		#
+		#			current_config = setting['configs'][current_configname]
+		#			#print current_config
+		#
+		#			applySetting(current_config)
+		#
+		#			matched = True
+		#			break
+		#	if matched:
+		#		break
+
+
 matched_local_patterns = []
 matched_local_settings = []
 matched_build_pattern = ''
@@ -77,8 +114,8 @@ current_pattern_configname = {}
 EOF
 
 " global variables
-if !exists('g:autosettings_for_local')
-	let g:autosettings_for_local = []
+if !exists('g:autosettings_settings')
+	let g:autosettings_settings = []
 endif
 if !exists('g:autosettings_for_build')
 	let g:autosettings_for_build = []
@@ -102,43 +139,48 @@ del matched_local_settings[:]
 matched_build_pattern = ''
 matched_build_setting = {}
 
-# local setting for current file path
-localsettings = vim.eval('g:autosettings_for_local')
+localsettings = vim.eval('g:autosettings_settings')
 for patterns, setting in localsettings:
 	for pattern in patterns:
 		if fnmatch.fnmatch(filepath, pattern):
 			matched_local_patterns.append(pattern)
 			matched_local_settings.append(setting)
+
+			# process 'setLocals', 'localMaps', 'localMapsExpr'
 			applySetting(setting)
+
+			# process 'buildConfigNames', 'buildConfigs'
+			applyBuildConfig(setting)
+
 			break
 
-# local setting for current file path & build configuration
-buildsettings = vim.eval('g:autosettings_for_build')
-matched = False
-for patterns, setting in buildsettings:
-	for pattern in patterns:
-		if fnmatch.fnmatch(filepath, pattern):
-			matched_build_pattern = pattern
-			matched_build_setting = setting
-
-			# common config
-			if 'commonConfig' in setting:
-				applySetting(setting['commonConfig'])
-
-			# specific config
-			if pattern not in current_pattern_configname:
-				current_configname = setting['defaultConfigName']
-				current_pattern_configname[pattern] = current_configname
-
-			current_config = setting['configs'][current_configname]
-			#print current_config
-
-			applySetting(current_config)
-
-			matched = True
-			break
-	if matched:
-		break
+			## local setting for current file path & build configuration
+			#buildsettings = vim.eval('g:autosettings_for_build')
+			#matched = False
+			#for patterns, setting in buildsettings:
+			#	for pattern in patterns:
+			#		if fnmatch.fnmatch(filepath, pattern):
+			#			matched_build_pattern = pattern
+			#			matched_build_setting = setting
+			#
+			#			# common config
+			#			if 'commonConfig' in setting:
+			#				applySetting(setting['commonConfig'])
+			#
+			#			# specific config
+			#			if pattern not in current_pattern_configname:
+			#				current_configname = setting['defaultConfigName']
+			#				current_pattern_configname[pattern] = current_configname
+			#
+			#			current_config = setting['configs'][current_configname]
+			#			#print current_config
+			#
+			#			applySetting(current_config)
+			#
+			#			matched = True
+			#			break
+			#	if matched:
+			#		break
 EOF
 endfun
 
@@ -150,33 +192,29 @@ winname = getWinName(bufname, buftype)
 print 'AutoSettings.vim settings for: %s'%winname
 print ' '
 
-print 'Matched Local Setting Patterns:'
 for i in range(len(matched_local_patterns)):
 	print matched_local_patterns[i]
 	print matched_local_settings[i]
 print ' '
 
-print 'Matched Build Config Pattern:'
-print matched_build_pattern
-print ' '
-
-print 'Predefined Config Names in the Matched Pattern:'
-if 'configNames' in matched_build_setting:
-	print matched_build_setting['configNames']
-print ' '
-
-print 'Current Config Name for the Matched Pattern:'
-if matched_build_pattern in current_pattern_configname:
-	current_config_name = current_pattern_configname[matched_build_pattern]
-	print current_config_name
-print ' '
-
-print 'Current Build Config:'
-if 'configs' in matched_build_setting:
-	print matched_build_setting['configs'][current_config_name]
-print ' '
 EOF
 endfun
+
+"print 'Predefined Config Names in the Matched Pattern:'
+"if 'configNames' in matched_build_setting:
+	"print matched_build_setting['configNames']
+"print ' '
+
+"print 'Current Config Name for the Matched Pattern:'
+"if matched_build_pattern in current_pattern_configname:
+	"current_config_name = current_pattern_configname[matched_build_pattern]
+	"print current_config_name
+"print ' '
+
+"print 'Current Build Config:'
+"if 'configs' in matched_build_setting:
+	"print matched_build_setting['configs'][current_config_name]
+"print ' '
 
 """""""""""""""""""""""""""""""""""""""""""""
 let &cpo= s:keepcpo

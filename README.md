@@ -1,4 +1,4 @@
-# AutoConfig.vim
+# AutoSettings.vim
 
 ```
 let py_cfg = {}
