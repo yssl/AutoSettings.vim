@@ -3,10 +3,10 @@
 " Author:       yssl <http://github.com/yssl>
 " License:      MIT License
 
-if exists("g:loaded_autoconfig") || &cp
+if exists("g:loaded_autosettings") || &cp
 	finish
 endif
-let g:loaded_autoconfig	= 1
+let g:loaded_autosettings	= 1
 let s:keepcpo           = &cpo
 set cpo&vim
 """""""""""""""""""""""""""""""""""""""""""""
@@ -77,18 +77,18 @@ current_pattern_configname = {}
 EOF
 
 " global variables
-if !exists('g:autoconfig_localconfigs')
-	let g:autoconfig_localconfigs = []
+if !exists('g:autosettings_for_local')
+	let g:autosettings_for_local = []
 endif
-if !exists('g:autoconfig_buildconfigs')
-	let g:autoconfig_buildconfigs = []
+if !exists('g:autosettings_for_build')
+	let g:autosettings_for_build = []
 endif
 
 " commands
-command! AutoConfigPrint call s:PrintCurrentConfig()
+command! AutoSettingsPrint call s:PrintCurrentConfig()
 
 " autocmd
-augroup AutoConfigAutoCmds
+augroup AutoSettingsAutoCmds
 	autocmd!
 	autocmd BufEnter * call s:UpdateConfig()
 augroup END
@@ -103,7 +103,7 @@ matched_build_pattern = ''
 matched_build_config = {}
 
 # localconfigs
-localconfigs = vim.eval('g:autoconfig_localconfigs')
+localconfigs = vim.eval('g:autosettings_for_local')
 for patterns, config in localconfigs:
 	for pattern in patterns:
 		if fnmatch.fnmatch(filepath, pattern):
@@ -113,7 +113,7 @@ for patterns, config in localconfigs:
 			break
 
 # buildconfigs
-buildconfigs = vim.eval('g:autoconfig_buildconfigs')
+buildconfigs = vim.eval('g:autosettings_for_build')
 matched = False
 for patterns, config in buildconfigs:
 	for pattern in patterns:
@@ -147,7 +147,7 @@ python << EOF
 bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
 winname = getWinName(bufname, buftype)
-print 'Current Window: %s'%winname
+print 'AutoSettings.vim settings for: %s'%winname
 print ' '
 
 print 'Matched Local Config Patterns:'
