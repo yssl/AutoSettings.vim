@@ -127,10 +127,10 @@ for patterns, setting in buildsettings:
 
 			# specific config
 			if pattern not in current_pattern_configname:
-				current_configname = config['defaultConfigName']
+				current_configname = setting['defaultConfigName']
 				current_pattern_configname[pattern] = current_configname
 
-			current_config = config['configs'][current_configname]
+			current_config = setting['configs'][current_configname]
 			#print current_config
 
 			applySetting(current_config)
