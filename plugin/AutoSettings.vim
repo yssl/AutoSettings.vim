@@ -77,40 +77,61 @@ def applyBuildConfig(setting):
 		current_config = setting['buildConfigs'][current_configname]
 		applySetting(current_config)
 
-		## local setting for current file path & build configuration
-		#buildsettings = vim.eval('g:autosettings_for_build')
-		#matched = False
-		#for patterns, setting in buildsettings:
-		#	for pattern in patterns:
-		#		if fnmatch.fnmatch(filepath, pattern):
-		#			matched_build_pattern = pattern
-		#			matched_build_setting = setting
-		#
-		#			# common config
-		#			if 'commonConfig' in setting:
-		#				applySetting(setting['commonConfig'])
-		#
-		#			# specific config
-		#			if pattern not in current_pattern_configname:
-		#				current_configname = setting['defaultConfigName']
-		#				current_pattern_configname[pattern] = current_configname
-		#
-		#			current_config = setting['configs'][current_configname]
-		#			#print current_config
-		#
-		#			applySetting(current_config)
-		#
-		#			matched = True
-		#			break
-		#	if matched:
-		#		break
 
+colLabelsd = {
+	'pattern':'Pattern',
+	'category':'Category',
+	'command':'Command',
+	}
+
+def buildCurrentSettingMat(colTypes):
+	mat = []
+	mat.append([colLabelsd[type] for type in colTypes])
+
+	for i in range(len(matched_local_patterns)):
+		row = []
+		row.append(matched_local_patterns[i])	# store pattern
+
+
+		mat.append(row)
+
+
+	for r in range(len(vim.windows)):
+		vim.command(str(r+1)+'wincmd w')
+		vim.command('call add(mat, [])')
+
+		if vim.windows[r]==curwin:
+			curwin_r = r
+
+		bufname = vim.windows[r].buffer.name
+		buftype = vim.eval('getbufvar(winbufnr(winnr()), \'&buftype\')')
+
+		for type in propTypes:
+			if type=='iscurwin':
+				if vim.windows[r]==curwin:	strcurwin = '* '
+				else:						strcurwin = '  '
+				vim.command('call add(mat[-1], \'%s\')'%strcurwin)
+
+			elif type=='winnr':
+				vim.command('call add(mat[-1], \'%s\')'%str(r+1))
+
+			elif type=='winname':
+				vim.command('call add(mat[-1], \'%s\')'%getWinName(bufname, buftype))
+
+			elif type=='workdir':
+				dir = vim.eval('s:GetWorkDir(\'%s\')'%getWinName(bufname, buftype))
+				#print '|%s|%s|%s|'%(bufname,buftype,dir)
+				vim.command('call add(mat[-1], \'%s\')'%dir)
+
+			elif type=='workdir_pattern':
+				pattern = vim.eval('s:GetWorkDirPattern(\'%s\')'%getWinName(bufname, buftype))
+				vim.command('call add(mat[-1], \'%s\')'%pattern)
+
+	vim.command(str(curwin_r+1)+'wincmd w')
+	vim.command('return mat')
 
 matched_local_patterns = []
 matched_local_settings = []
-matched_build_pattern = ''
-matched_build_setting = {}
-current_pattern_configname = {}
 EOF
 
 " global variables
@@ -136,8 +157,6 @@ python << EOF
 filepath = vim.eval('expand(\'<afile>:p\')')
 del matched_local_patterns[:]
 del matched_local_settings[:]
-matched_build_pattern = ''
-matched_build_setting = {}
 
 localsettings = vim.eval('g:autosettings_settings')
 for patterns, setting in localsettings:
@@ -153,34 +172,6 @@ for patterns, setting in localsettings:
 			applyBuildConfig(setting)
 
 			break
-
-			## local setting for current file path & build configuration
-			#buildsettings = vim.eval('g:autosettings_for_build')
-			#matched = False
-			#for patterns, setting in buildsettings:
-			#	for pattern in patterns:
-			#		if fnmatch.fnmatch(filepath, pattern):
-			#			matched_build_pattern = pattern
-			#			matched_build_setting = setting
-			#
-			#			# common config
-			#			if 'commonConfig' in setting:
-			#				applySetting(setting['commonConfig'])
-			#
-			#			# specific config
-			#			if pattern not in current_pattern_configname:
-			#				current_configname = setting['defaultConfigName']
-			#				current_pattern_configname[pattern] = current_configname
-			#
-			#			current_config = setting['configs'][current_configname]
-			#			#print current_config
-			#
-			#			applySetting(current_config)
-			#
-			#			matched = True
-			#			break
-			#	if matched:
-			#		break
 EOF
 endfun
 
@@ -197,24 +188,65 @@ for i in range(len(matched_local_patterns)):
 	print matched_local_settings[i]
 print ' '
 
+
+
+colTypes = ['pattern', 'category', 'command']
+
 EOF
+
+
+"wpMat = vim.eval('s:BuildAllWinPropMat(propTypes)')
+"propTypes = vim.eval('propTypes')
+
+"# build width info
+"vimWidth = int(vim.eval('&columns'))
+"widthColMat = toWidthColMat(wpMat)
+
+"widths = []
+"len_labels = int(vim.eval('len(propTypes)'))
+"sumLongWidths = 0
+"for c in range(len_labels):
+	"if c==0:	gapWidth = 0
+	"else:		gapWidth = 2
+	"maxColWidth = max(widthColMat[c]) + gapWidth
+	"widths.append(maxColWidth)
+
+	"if propTypes[c]=='winname' or propTypes[c]=='workdir':
+		"sumLongWidths += maxColWidth
+
+"totalWidth = sum(widths)
+"reduceWidth = totalWidth - vimWidth
+"if reduceWidth > 0:
+	"for c in range(len_labels):
+		"if propTypes[c]=='winname' or propTypes[c]=='workdir':
+			"widths[c] -= int(reduceWidth * float(widths[c])/sumLongWidths)+1
+
+"# print
+"prefix = '..'
+"for r in range(len(wpMat)):
+	"if r==0:	vim.command('echohl Title')
+	"s = ''
+	"for c in range(len(wpMat[0])):
+		"if len(wpMat[r][c])<=widths[c]:
+			"s += wpMat[r][c].ljust(widths[c])
+		"else:
+			"s += ltrunc(wpMat[r][c], widths[c]-2, prefix)+'  '
+	"vim.command('echo \'%s\''%s)
+	"if r==0:	vim.command('echohl None')
+
+"# prompt
+"message = 'Type # of window to jump to or press ENTER to exit'
+"vim.command('call inputsave()')
+"vim.command("let user_input = input('" + message + ": ')")
+"vim.command('call inputrestore()')
+"user_input = vim.eval('user_input')
+"if user_input.isdigit():
+	"winidx = int(user_input)
+	"winnum = int(vim.eval('winnr("$")'))
+	"if winidx<=winnum:
+		"vim.command('%dwincmd w'%winidx)
+
 endfun
-
-"print 'Predefined Config Names in the Matched Pattern:'
-"if 'configNames' in matched_build_setting:
-	"print matched_build_setting['configNames']
-"print ' '
-
-"print 'Current Config Name for the Matched Pattern:'
-"if matched_build_pattern in current_pattern_configname:
-	"current_config_name = current_pattern_configname[matched_build_pattern]
-	"print current_config_name
-"print ' '
-
-"print 'Current Build Config:'
-"if 'configs' in matched_build_setting:
-	"print matched_build_setting['configs'][current_config_name]
-"print ' '
 
 """""""""""""""""""""""""""""""""""""""""""""
 let &cpo= s:keepcpo
