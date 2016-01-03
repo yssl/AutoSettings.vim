@@ -4,7 +4,7 @@
 " License:      MIT License
 
 if exists("g:loaded_autosettings") || &cp
-	finish
+	"finish
 endif
 let g:loaded_autosettings	= 1
 let s:keepcpo           = &cpo
@@ -84,54 +84,78 @@ colLabelsd = {
 	'command':'Command',
 	}
 
+categories = ['setLocals','localMaps','localMapsExpr','buildConfigNames','buildConfig']
+
 def buildCurrentSettingMat(colTypes):
 	mat = []
 	mat.append([colLabelsd[type] for type in colTypes])
 
-	for i in range(len(matched_local_patterns)):
-		row = []
-		row.append(matched_local_patterns[i])	# store pattern
+	for p in range(len(gMatchedPatterns)):	# p: pattern inex
+		pattern = gMatchedPatterns[p]
+		setting = gMatchedSettings[p]
 
+		isFirstCategory = True
+		for category in categories:
+			if category in setting:
+				categoryData = setting[category]
+				print 'raw', category, categoryData
 
-		mat.append(row)
+				if category=='buildConfigNames':
+					itemData = categoryData
 
+					# add pattern
+					if isFirstCategory:
+						row.append(pattern)	# store pattern
+					else:
+						row.append('')
 
-	for r in range(len(vim.windows)):
-		vim.command(str(r+1)+'wincmd w')
-		vim.command('call add(mat, [])')
+					# add category
+					row.append(category)
 
-		if vim.windows[r]==curwin:
-			curwin_r = r
+					# add command
+					row.append(str(itemData))
 
-		bufname = vim.windows[r].buffer.name
-		buftype = vim.eval('getbufvar(winbufnr(winnr()), \'&buftype\')')
+					mat.append(row)
 
-		for type in propTypes:
-			if type=='iscurwin':
-				if vim.windows[r]==curwin:	strcurwin = '* '
-				else:						strcurwin = '  '
-				vim.command('call add(mat[-1], \'%s\')'%strcurwin)
+				else:
+					for i in range(len(categoryData)):	# i: item index
+						itemData = categoryData[i]
 
-			elif type=='winnr':
-				vim.command('call add(mat[-1], \'%s\')'%str(r+1))
+						row = []
 
-			elif type=='winname':
-				vim.command('call add(mat[-1], \'%s\')'%getWinName(bufname, buftype))
+						# add pattern
+						if isFirstCategory and i==0:
+							print pattern
+							row.append(pattern)	# store pattern
+						else:
+							row.append('')
 
-			elif type=='workdir':
-				dir = vim.eval('s:GetWorkDir(\'%s\')'%getWinName(bufname, buftype))
-				#print '|%s|%s|%s|'%(bufname,buftype,dir)
-				vim.command('call add(mat[-1], \'%s\')'%dir)
+						# add category
+						if i==0:
+							row.append(category)
+						else:
+							row.append('')
 
-			elif type=='workdir_pattern':
-				pattern = vim.eval('s:GetWorkDirPattern(\'%s\')'%getWinName(bufname, buftype))
-				vim.command('call add(mat[-1], \'%s\')'%pattern)
+						# add command
+						row.append(str(itemData))
+						print category, row
 
-	vim.command(str(curwin_r+1)+'wincmd w')
-	vim.command('return mat')
+						mat.append(row)
 
-matched_local_patterns = []
-matched_local_settings = []
+				isFirstCategory = False
+				print ' '
+
+	return mat
+
+def toWidthColMat(rowMat):
+	colMat = [[None]*len(rowMat) for c in range(len(rowMat[0]))]
+	for r in range(len(rowMat)):
+		for c in range(len(rowMat[r])):
+			colMat[c][r] = len(rowMat[r][c])
+	return colMat
+
+gMatchedPatterns = []
+gMatchedSettings = []
 EOF
 
 " global variables
@@ -155,15 +179,15 @@ augroup END
 fun! s:UpdateSetting()
 python << EOF
 filepath = vim.eval('expand(\'<afile>:p\')')
-del matched_local_patterns[:]
-del matched_local_settings[:]
+del gMatchedPatterns[:]
+del gMatchedSettings[:]
 
 localsettings = vim.eval('g:autosettings_settings')
 for patterns, setting in localsettings:
 	for pattern in patterns:
 		if fnmatch.fnmatch(filepath, pattern):
-			matched_local_patterns.append(pattern)
-			matched_local_settings.append(setting)
+			gMatchedPatterns.append(pattern)
+			gMatchedSettings.append(setting)
 
 			# process 'setLocals', 'localMaps', 'localMapsExpr'
 			applySetting(setting)
@@ -180,72 +204,44 @@ python << EOF
 bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
 winname = getWinName(bufname, buftype)
-print 'AutoSettings.vim settings for: %s'%winname
+vim.command('echon \'AutoSettings for \'')
+vim.command('echohl Title')
+vim.command('echon \'%s\''%winname)
+vim.command('echohl None')
+
+for i in range(len(gMatchedPatterns)):
+	print gMatchedPatterns[i]
+	print gMatchedSettings[i]
 print ' '
-
-for i in range(len(matched_local_patterns)):
-	print matched_local_patterns[i]
-	print matched_local_settings[i]
-print ' '
-
-
 
 colTypes = ['pattern', 'category', 'command']
+dataMat = buildCurrentSettingMat(colTypes)
+
+for r in range(len(dataMat)):
+	for c in range(len(dataMat[0])):
+		print dataMat[r][c],
+	print
+
+
+	#widthColMat = toWidthColMat(dataMat)
+	#
+	#maxColWidths = []
+	#gapWidth = 2
+	#for c in range(len(colTypes)):
+	#	maxColWidth = max(widthColMat[c]) + gapWidth
+	#	maxColWidths.append(maxColWidth)
+	#
+	## print
+	#prefix = '..'
+	#for r in range(len(dataMat)):
+	#	if r==0:	vim.command('echohl Title')
+	#	s = ''
+	#	for c in range(len(dataMat[0])):
+	#		s += dataMat[r][c].ljust(maxColWidths[c])
+	#	vim.command('echo \'%s\''%s)
+	#	if r==0:	vim.command('echohl None')
 
 EOF
-
-
-"wpMat = vim.eval('s:BuildAllWinPropMat(propTypes)')
-"propTypes = vim.eval('propTypes')
-
-"# build width info
-"vimWidth = int(vim.eval('&columns'))
-"widthColMat = toWidthColMat(wpMat)
-
-"widths = []
-"len_labels = int(vim.eval('len(propTypes)'))
-"sumLongWidths = 0
-"for c in range(len_labels):
-	"if c==0:	gapWidth = 0
-	"else:		gapWidth = 2
-	"maxColWidth = max(widthColMat[c]) + gapWidth
-	"widths.append(maxColWidth)
-
-	"if propTypes[c]=='winname' or propTypes[c]=='workdir':
-		"sumLongWidths += maxColWidth
-
-"totalWidth = sum(widths)
-"reduceWidth = totalWidth - vimWidth
-"if reduceWidth > 0:
-	"for c in range(len_labels):
-		"if propTypes[c]=='winname' or propTypes[c]=='workdir':
-			"widths[c] -= int(reduceWidth * float(widths[c])/sumLongWidths)+1
-
-"# print
-"prefix = '..'
-"for r in range(len(wpMat)):
-	"if r==0:	vim.command('echohl Title')
-	"s = ''
-	"for c in range(len(wpMat[0])):
-		"if len(wpMat[r][c])<=widths[c]:
-			"s += wpMat[r][c].ljust(widths[c])
-		"else:
-			"s += ltrunc(wpMat[r][c], widths[c]-2, prefix)+'  '
-	"vim.command('echo \'%s\''%s)
-	"if r==0:	vim.command('echohl None')
-
-"# prompt
-"message = 'Type # of window to jump to or press ENTER to exit'
-"vim.command('call inputsave()')
-"vim.command("let user_input = input('" + message + ": ')")
-"vim.command('call inputrestore()')
-"user_input = vim.eval('user_input')
-"if user_input.isdigit():
-	"winidx = int(user_input)
-	"winnum = int(vim.eval('winnr("$")'))
-	"if winidx<=winnum:
-		"vim.command('%dwincmd w'%winidx)
-
 endfun
 
 """""""""""""""""""""""""""""""""""""""""""""
