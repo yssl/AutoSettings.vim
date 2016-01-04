@@ -81,7 +81,7 @@ def applyBuildConfig(setting):
 colLabelsd = {
 	'pattern':'Pattern',
 	'category':'Category',
-	'command':'Command',
+	'command':'Executed Commands (Up to Down)',
 	}
 
 categories = ['setLocals','localMaps','localMapsExpr','buildConfigNames','buildConfig']
@@ -98,10 +98,11 @@ def buildCurrentSettingMat(colTypes):
 		for category in categories:
 			if category in setting:
 				categoryData = setting[category]
-				print 'raw', category, categoryData
 
 				if category=='buildConfigNames':
 					itemData = categoryData
+
+					row = []
 
 					# add pattern
 					if isFirstCategory:
@@ -113,7 +114,7 @@ def buildCurrentSettingMat(colTypes):
 					row.append(category)
 
 					# add command
-					row.append(str(itemData))
+					row.append(itemData2Str(category, itemData))
 
 					mat.append(row)
 
@@ -125,7 +126,6 @@ def buildCurrentSettingMat(colTypes):
 
 						# add pattern
 						if isFirstCategory and i==0:
-							print pattern
 							row.append(pattern)	# store pattern
 						else:
 							row.append('')
@@ -137,15 +137,47 @@ def buildCurrentSettingMat(colTypes):
 							row.append('')
 
 						# add command
-						row.append(str(itemData))
-						print category, row
+						row.append(itemData2Str(category, itemData))
 
 						mat.append(row)
 
 				isFirstCategory = False
-				print ' '
 
 	return mat
+
+def itemData2Str(category, itemData):
+	if category=='setLocals':
+		return 'setlocal %s'%itemData
+	elif category=='localMaps':
+		s = '['
+		for i in range(len(itemData[0])):
+			s += itemData[0][i]
+			if i < len(itemData[0])-1:
+				s += ' '
+		s += '] <buffer> %s %s'%(itemData[1], itemData[2])
+		return s
+	elif category=='localMapsExpr':
+		s = '['
+		for i in range(len(itemData[0])):
+			s += itemData[0][i]
+			if i < len(itemData[0])-1:
+				s += ' '
+		#cmd = itemData[2]
+		cmd = repr(itemData[2])
+		cmd = cmd.replace('\\','\\\\')
+		cmd = cmd.replace('\'','\\\'')
+		s += '] <buffer> <expr> %s \'%s\''%(itemData[1], cmd)
+		return s
+	elif category=='buildConfigNames':
+		s = '['
+		for i in range(len(itemData)):
+			s += itemData[i]
+			if i < len(itemData)-1:
+				s += ' '
+		s += ']'
+		return s
+	else:
+		return str(itemData)
 
 def toWidthColMat(rowMat):
 	colMat = [[None]*len(rowMat) for c in range(len(rowMat[0]))]
@@ -208,41 +240,43 @@ vim.command('echon \'AutoSettings for \'')
 vim.command('echohl Title')
 vim.command('echon \'%s\''%winname)
 vim.command('echohl None')
+vim.command('echon \':\'')
+vim.command('echo \' \'')
 
-for i in range(len(gMatchedPatterns)):
-	print gMatchedPatterns[i]
-	print gMatchedSettings[i]
-print ' '
+#for i in range(len(gMatchedPatterns)):
+#	print gMatchedPatterns[i]
+#	print gMatchedSettings[i]
+#print ' '
 
 colTypes = ['pattern', 'category', 'command']
 dataMat = buildCurrentSettingMat(colTypes)
 
+#for r in range(len(dataMat)):
+#	for c in range(len(dataMat[0])):
+#		print dataMat[r][c],
+#	print
+
+widthColMat = toWidthColMat(dataMat)
+
+maxColWidths = []
+gapWidth = 2
+for c in range(len(colTypes)):
+	maxColWidth = max(widthColMat[c]) + gapWidth
+	maxColWidths.append(maxColWidth)
+
+# print
+prefix = '..'
 for r in range(len(dataMat)):
+	if r==0:	vim.command('echohl Title')
+	s = ''
 	for c in range(len(dataMat[0])):
-		print dataMat[r][c],
-	print
-
-
-	#widthColMat = toWidthColMat(dataMat)
-	#
-	#maxColWidths = []
-	#gapWidth = 2
-	#for c in range(len(colTypes)):
-	#	maxColWidth = max(widthColMat[c]) + gapWidth
-	#	maxColWidths.append(maxColWidth)
-	#
-	## print
-	#prefix = '..'
-	#for r in range(len(dataMat)):
-	#	if r==0:	vim.command('echohl Title')
-	#	s = ''
-	#	for c in range(len(dataMat[0])):
-	#		s += dataMat[r][c].ljust(maxColWidths[c])
-	#	vim.command('echo \'%s\''%s)
-	#	if r==0:	vim.command('echohl None')
+		s += dataMat[r][c].ljust(maxColWidths[c])
+	vim.command('echo \'%s\''%s)
+	if r==0:	vim.command('echohl None')
 
 EOF
 endfun
+
 
 """""""""""""""""""""""""""""""""""""""""""""
 let &cpo= s:keepcpo
