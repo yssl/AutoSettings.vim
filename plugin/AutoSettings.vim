@@ -81,7 +81,7 @@ def applyBuildConfig(setting):
 colLabelsd = {
 	'pattern':'Pattern',
 	'category':'Category',
-	'command':'Executed Commands (Up to Down)',
+	'command':'Vim Commands (Executed from top to bottom)',
 	}
 
 categories = ['setLocals','localMaps','localMapsExpr','buildConfigNames','buildConfig']
@@ -251,28 +251,34 @@ vim.command('echo \' \'')
 colTypes = ['pattern', 'category', 'command']
 dataMat = buildCurrentSettingMat(colTypes)
 
-#for r in range(len(dataMat)):
-#	for c in range(len(dataMat[0])):
-#		print dataMat[r][c],
-#	print
+if len(dataMat) > 1:
 
-widthColMat = toWidthColMat(dataMat)
+	#for r in range(len(dataMat)):
+	#	for c in range(len(dataMat[0])):
+	#		print dataMat[r][c],
+	#	print
 
-maxColWidths = []
-gapWidth = 2
-for c in range(len(colTypes)):
-	maxColWidth = max(widthColMat[c]) + gapWidth
-	maxColWidths.append(maxColWidth)
+	widthColMat = toWidthColMat(dataMat)
 
-# print
-prefix = '..'
-for r in range(len(dataMat)):
-	if r==0:	vim.command('echohl Title')
-	s = ''
-	for c in range(len(dataMat[0])):
-		s += dataMat[r][c].ljust(maxColWidths[c])
-	vim.command('echo \'%s\''%s)
-	if r==0:	vim.command('echohl None')
+	maxColWidths = []
+	gapWidth = 2
+	for c in range(len(colTypes)):
+		maxColWidth = max(widthColMat[c]) + gapWidth
+		maxColWidths.append(maxColWidth)
+
+	# print
+	for r in range(len(dataMat)):
+		if r==0:	vim.command('echohl Title')
+		s = ''
+		for c in range(len(dataMat[0])):
+			s += dataMat[r][c].ljust(maxColWidths[c])
+		vim.command('echo \'%s\''%s)
+		if r==0:	vim.command('echohl None')
+
+else:
+	vim.command('echohl Title')
+	vim.command('echo \'No matching patterns in g:autosettings_settings for the path %s.\''%winname)	
+	vim.command('echohl None')
 
 EOF
 endfun
