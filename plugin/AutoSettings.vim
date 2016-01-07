@@ -277,7 +277,7 @@ if len(dataMat) > 1:
 
 else:
 	vim.command('echohl Title')
-	vim.command('echo \'No matching patterns in g:autosettings_settings for the path %s.\''%winname)	
+	vim.command('echo \'No matching patterns for the current file path.\'')	
 	vim.command('echohl None')
 
 EOF
