@@ -81,14 +81,16 @@ def applyBuildConfig(setting):
 colLabelsd = {
 	'pattern':'Pattern',
 	'category':'Category',
-	'command':'Vim Commands (Executed from top to bottom)',
+	'command':'Vim Commands (executed from top to bottom)',
 	}
 
 categories = ['setLocals','localMaps','localMapsExpr','buildConfigNames','buildConfig']
 
 def buildCurrentSettingMat(colTypes):
-	mat = []
+	mat = [] # num row * num cols
 	mat.append([colLabelsd[type] for type in colTypes])
+
+	itemKeywordPositions = [[0,0]]	# num row
 
 	for p in range(len(gMatchedPatterns)):	# p: pattern inex
 		pattern = gMatchedPatterns[p]
@@ -114,9 +116,11 @@ def buildCurrentSettingMat(colTypes):
 					row.append(category)
 
 					# add command
-					row.append(itemData2Str(category, itemData))
+					itemStr, keywordPositions = itemData2Str(category, itemData)
+					row.append(itemStr)
 
 					mat.append(row)
+					itemKeywordPositions.append(keywordPositions)
 
 				else:
 					for i in range(len(categoryData)):	# i: item index
@@ -137,47 +141,62 @@ def buildCurrentSettingMat(colTypes):
 							row.append('')
 
 						# add command
-						row.append(itemData2Str(category, itemData))
+						itemStr, keywordPositions = itemData2Str(category, itemData)
+						row.append(itemStr)
 
 						mat.append(row)
+						itemKeywordPositions.append(keywordPositions)
 
 				isFirstCategory = False
 
-	return mat
+	return mat, itemKeywordPositions
 
 def itemData2Str(category, itemData):
+	cmd = ''
+	shortcut = ''
+	contents = ''
+	keywordPositions = [0,0]	# [0]:end pos of vim command, [1]:end pos of shortcut
+
 	if category=='setLocals':
-		return 'setlocal %s'%itemData
+		cmd = 'setlocal '
+		contents = itemData
 	elif category=='localMaps':
-		s = '['
+		cmd = '['
 		for i in range(len(itemData[0])):
-			s += itemData[0][i]
+			cmd += itemData[0][i]
 			if i < len(itemData[0])-1:
-				s += ' '
-		s += '] <buffer> %s %s'%(itemData[1], itemData[2])
-		return s
+				cmd += ' '
+		cmd += '] <buffer> '
+		shortcut = itemData[1]+' '
+		contents = itemData[2]
 	elif category=='localMapsExpr':
-		s = '['
+		cmd = '['
 		for i in range(len(itemData[0])):
-			s += itemData[0][i]
+			cmd += itemData[0][i]
 			if i < len(itemData[0])-1:
-				s += ' '
-		#cmd = itemData[2]
-		cmd = repr(itemData[2])
-		cmd = cmd.replace('\\','\\\\')
-		cmd = cmd.replace('\'','\\\'')
-		s += '] <buffer> <expr> %s \'%s\''%(itemData[1], cmd)
-		return s
+				cmd += ' '
+		cmd += '] <buffer> <expr> '
+		shortcut = itemData[1]+' '
+		
+		#contents = itemData[2]
+		contents = repr(itemData[2])
+		contents = contents.replace('\\','\\\\')
+		contents = contents.replace('\'','\\\'')
+		contents = '\'%s\''%contents
 	elif category=='buildConfigNames':
-		s = '['
+		contents = '['
 		for i in range(len(itemData)):
-			s += itemData[i]
+			contents += itemData[i]
 			if i < len(itemData)-1:
-				s += ' '
-		s += ']'
-		return s
+				contents += ' '
+		contents += ']'
 	else:
-		return str(itemData)
+		contents = str(itemData)
+
+	itemStr = cmd + shortcut + contents
+	keywordPositions = [len(cmd), len(cmd)+len(shortcut)]
+
+	return itemStr, keywordPositions
 
 def toWidthColMat(rowMat):
 	colMat = [[None]*len(rowMat) for c in range(len(rowMat[0]))]
@@ -233,13 +252,25 @@ endfun
 
 fun! s:PrintCurrentSetting()
 python << EOF
+hlGroupsd = {
+			'title':'Title',
+			'labels':'Title',
+			'pattern':'Identifier',
+			'setLocals':'PreProc',
+			'localMaps':'Type','localMapsExpr':'Type',
+			'buildConfigNames':'Number','buildConfig':'Number',
+			'shortcut':'Function',
+			'contents':'None'
+			}
+
 bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
 winname = getWinName(bufname, buftype)
-vim.command('echon \'AutoSettings for \'')
-vim.command('echohl Title')
-vim.command('echon \'%s\''%winname)
+vim.command('echohl %s'%hlGroupsd['title'])
+vim.command('echon \'AutoSettings \'')
 vim.command('echohl None')
+vim.command('echon \'for \'')
+vim.command('echon \'%s\''%winname)
 vim.command('echon \':\'')
 vim.command('echo \' \'')
 
@@ -249,7 +280,7 @@ vim.command('echo \' \'')
 #print ' '
 
 colTypes = ['pattern', 'category', 'command']
-dataMat = buildCurrentSettingMat(colTypes)
+dataMat, itemKeywordPositions = buildCurrentSettingMat(colTypes)
 
 if len(dataMat) > 1:
 
@@ -267,20 +298,54 @@ if len(dataMat) > 1:
 		maxColWidths.append(maxColWidth)
 
 	# print
+	categoryColor = 'None'
 	for r in range(len(dataMat)):
-		if r==0:	vim.command('echohl Title')
-		s = ''
-		for c in range(len(dataMat[0])):
-			s += dataMat[r][c].ljust(maxColWidths[c])
-		vim.command('echo \'%s\''%s)
-		if r==0:	vim.command('echohl None')
+		if r==0:
+			vim.command('echo \'\'')
+			vim.command('echohl %s'%hlGroupsd['labels'])
+			s = ''
+			for c in range(len(dataMat[0])):
+				s += dataMat[r][c].ljust(maxColWidths[c])
+			vim.command('echon \'%s\''%s)
+		else:
+			for c in range(len(dataMat[0])):
+				if c==0:
+					vim.command('echohl %s'%hlGroupsd['pattern'])
+					vim.command('echon \'%s\''%dataMat[r][c].ljust(maxColWidths[c]))
+				elif c==1:
+					if dataMat[r][c] in hlGroupsd:
+						categoryColor = hlGroupsd[dataMat[r][c]]
+						vim.command('echohl %s'%categoryColor)
+					vim.command('echon \'%s\''%dataMat[r][c].ljust(maxColWidths[c]))
+				else:
+					#vim.command('echohl %s'%hlGroupsd[''])
+					#vim.command('echon \'%s\''%dataMat[r][c].ljust(maxColWidths[c]))
+					itemStr = dataMat[r][c].ljust(maxColWidths[c])
+					vim.command('echohl %s'%categoryColor)
+					vim.command('echon \'%s\''%itemStr[:itemKeywordPositions[r][0]])
+					vim.command('echohl %s'%hlGroupsd['shortcut'])
+					vim.command('echon \'%s\''%itemStr[itemKeywordPositions[r][0]:itemKeywordPositions[r][1]])
+					vim.command('echohl %s'%hlGroupsd['contents'])
+					vim.command('echon \'%s\''%itemStr[itemKeywordPositions[r][1]:])
+
+		vim.command('echo \'\'')
 
 else:
-	vim.command('echohl Title')
-	vim.command('echo \'No matching patterns for the current file path.\'')	
-	vim.command('echohl None')
+	vim.command('echohl %s'%hlGroupsd['labels'])
+	vim.command('echo \'No matching patterns for the current window.\'')	
+
+vim.command('echohl None')
 
 EOF
+
+		"if r==0:	vim.command('echohl Title')
+		"s = ''
+		"for c in range(len(dataMat[0])):
+			"s += dataMat[r][c].ljust(maxColWidths[c])
+		"vim.command('echo \'%s\''%s)
+		"if r==0:	vim.command('echohl None')
+
+
 endfun
 
 
