@@ -58,16 +58,20 @@ def applySetting(setting):
 			command = mapdata[2]
 			for mapcmd in mapdata[0]:
 				if mapcmd[0]!='n':	# add <ESC> when non-normal mode mapping
-					command = '<ESC>'+command
-				vim.command('exec \'%s <buffer> %s %s\''%(mapcmd, shortcut, command))
+					command2 = '<ESC>'+command
+				else:
+					command2 = command
+				vim.command('exec \'%s <buffer> %s %s\''%(mapcmd, shortcut, command2))
 	if 'localMapsExpr' in setting:
 		for mapdata in setting['localMapsExpr']:
 			shortcut = mapdata[1]
 			command = mapdata[2]
 			for mapcmd in mapdata[0]:
 				if mapcmd[0]!='n':	# add <ESC> when non-normal mode mapping
-					command = command[:1]+'<ESC>'+command[1:]
-				vim.command('exec \'%s <buffer> <expr> %s \'%s\'\''%(mapcmd, shortcut, command))
+					command2 = command[:1]+'<ESC>'+command[1:]
+				else:
+					command2 = command
+				vim.command('exec \'%s <buffer> <expr> %s \'%s\'\''%(mapcmd, shortcut, command2))
 
 def applyBuildConfig(setting):
 	if 'buildConfigNames' in setting:
@@ -77,126 +81,97 @@ def applyBuildConfig(setting):
 		current_config = setting['buildConfigs'][current_configname]
 		applySetting(current_config)
 
-
+colTypes = ['pattern', 'category', 'command']
 colLabelsd = {
 	'pattern':'Pattern',
 	'category':'Category',
 	'command':'Vim Commands (executed from top to bottom)',
 	}
 
-categories = ['setLocals','localMaps','localMapsExpr','buildConfigNames','buildConfig']
+def buildSettingMats(pattern, setting, configName):
 
-def buildCurrentSettingMat(colTypes):
-	mat = [] # num row * num cols
-	mat.append([colLabelsd[type] for type in colTypes])
+	# dataMat[i][0]: pattern
+	# dataMat[i][1]: category
+	# dataMat[i][2]: vim command
+	dataMat = []
 
-	itemKeywordPositions = [[0,0]]	# num row
+	# posMat[i][1]: length of configName
+	# posMat[i][2][0]: length of vim command (like 'setlocal')
+	# posMat[i][2][1]: length of shortcut
+	posMat = []
 
-	for p in range(len(gMatchedPatterns)):	# p: pattern inex
-		pattern = gMatchedPatterns[p]
-		setting = gMatchedSettings[p]
-
-		isFirstCategory = True
-		for category in categories:
-			if category in setting:
-				categoryData = setting[category]
-
-				if category=='buildConfigNames':
-					itemData = categoryData
-
-					row = []
-
-					# add pattern
-					if isFirstCategory:
-						row.append(pattern)	# store pattern
-					else:
-						row.append('')
-
-					# add category
-					row.append(category)
-
-					# add command
-					itemStr, keywordPositions = itemData2Str(category, itemData)
-					row.append(itemStr)
-
-					mat.append(row)
-					itemKeywordPositions.append(keywordPositions)
-
+	if 'setLocals' in setting:
+		for i in range(len(setting['setLocals'])):
+			if i==0:
+				category = 'setLocals'
+			else:
+				category = ''
+			setparam = setting['setLocals'][i]
+			vim_command = 'setlocal %s'%setparam
+			dataMat.append(['',category,vim_command])
+			posMat.append([None, 0, [8, 8]])
+	if 'localMaps' in setting:
+		for i in range(len(setting['localMaps'])):
+			mapdata = setting['localMaps'][i]
+			shortcut = mapdata[1]
+			command = mapdata[2]
+			for j in range(len(mapdata[0])):
+				if i==0 and j==0:
+					category = 'localMaps'
 				else:
-					for i in range(len(categoryData)):	# i: item index
-						itemData = categoryData[i]
+					category = ''
+				mapcmd = mapdata[0][j]
+				if mapcmd[0]!='n':	# add <ESC> when non-normal mode mapping
+					command2 = '<ESC>'+command
+				else:
+					command2 = command
+				vim_command = '%s <buffer> %s %s'%(mapcmd, shortcut, command2)
+				dataMat.append(['',category,vim_command])
+				posMat.append([None, 0, [len(mapcmd)+9, len(mapcmd)+9+len(shortcut)+1]])
+	if 'localMapsExpr' in setting:
+		for i in range(len(setting['localMapsExpr'])):
+			mapdata = setting['localMapsExpr'][i]
+			shortcut = mapdata[1]
+			command = mapdata[2]
+			for j in range(len(mapdata[0])):
+				if i==0 and j==0:
+					category = 'localMapsExpr'
+				else:
+					category = ''
+				mapcmd = mapdata[0][j]
+				if mapcmd[0]!='n':	# add <ESC> when non-normal mode mapping
+					command2 = command[:1]+'<ESC>'+command[1:]
+				else:
+					command2 = command
 
-						row = []
+				command2 = repr(command2)
+				command2 = command2.replace('\\','\\\\')
+				command2 = command2.replace('\'','\\\'')
+				#command2 = '\'%s\''%command2
 
-						# add pattern
-						if isFirstCategory and i==0:
-							row.append(pattern)	# store pattern
-						else:
-							row.append('')
+				vim_command = '%s <buffer> <expr> %s \'%s\''%(mapcmd, shortcut, command2)
+				dataMat.append(['',category,vim_command])
+				posMat.append([None, 0, [len(mapcmd)+9+7, len(mapcmd)+9+7+len(shortcut)+1]])
 
-						# add category
-						if i==0:
-							row.append(category)
-						else:
-							row.append('')
+	if len(dataMat) > 0:
+		dataMat[0][0] = pattern
 
-						# add command
-						itemStr, keywordPositions = itemData2Str(category, itemData)
-						row.append(itemStr)
+	if configName != '':
+		for r in range(len(dataMat)):
+			if dataMat[r][1] != '':
+				dataMat[r][1] = '['+configName+']'+dataMat[r][1]
+				posMat[r][1] = len(configName)+2
 
-						mat.append(row)
-						itemKeywordPositions.append(keywordPositions)
+	return dataMat, posMat
 
-				isFirstCategory = False
-
-	return mat, itemKeywordPositions
-
-def itemData2Str(category, itemData):
-	cmd = ''
-	shortcut = ''
-	contents = ''
-	keywordPositions = [0,0]	# [0]:end pos of vim command, [1]:end pos of shortcut
-
-	if category=='setLocals':
-		cmd = 'setlocal '
-		contents = itemData
-	elif category=='localMaps':
-		cmd = '['
-		for i in range(len(itemData[0])):
-			cmd += itemData[0][i]
-			if i < len(itemData[0])-1:
-				cmd += ' '
-		cmd += '] <buffer> '
-		shortcut = itemData[1]+' '
-		contents = itemData[2]
-	elif category=='localMapsExpr':
-		cmd = '['
-		for i in range(len(itemData[0])):
-			cmd += itemData[0][i]
-			if i < len(itemData[0])-1:
-				cmd += ' '
-		cmd += '] <buffer> <expr> '
-		shortcut = itemData[1]+' '
-		
-		#contents = itemData[2]
-		contents = repr(itemData[2])
-		contents = contents.replace('\\','\\\\')
-		contents = contents.replace('\'','\\\'')
-		contents = '\'%s\''%contents
-	elif category=='buildConfigNames':
-		contents = '['
-		for i in range(len(itemData)):
-			contents += itemData[i]
-			if i < len(itemData)-1:
-				contents += ' '
-		contents += ']'
-	else:
-		contents = str(itemData)
-
-	itemStr = cmd + shortcut + contents
-	keywordPositions = [len(cmd), len(cmd)+len(shortcut)]
-
-	return itemStr, keywordPositions
+def buildBuildConfigMats(pattern, setting):
+	if 'buildConfigNames' in setting:
+		pass
+	if 'buildConfigs' in setting:
+		current_configname = setting['buildConfigNames'][0]
+		current_config = setting['buildConfigs'][current_configname]
+		return buildSettingMats(pattern, current_config, current_configname)
+	return [],[]
 
 def toWidthColMat(rowMat):
 	colMat = [[None]*len(rowMat) for c in range(len(rowMat[0]))]
@@ -208,6 +183,7 @@ def toWidthColMat(rowMat):
 gMatchedPatterns = []
 gMatchedSettings = []
 EOF
+
 
 " global variables
 if !exists('g:autosettings_settings')
@@ -279,15 +255,29 @@ vim.command('echo \' \'')
 #	print gMatchedSettings[i]
 #print ' '
 
-colTypes = ['pattern', 'category', 'command']
-dataMat, itemKeywordPositions = buildCurrentSettingMat(colTypes)
+dataMat = []
+posMat = []
+dataMat.append([colLabelsd[type] for type in colTypes])
+posMat.append([None, 0, [0,0]])
+
+for i in range(len(gMatchedPatterns)):
+
+	dm, pm = buildSettingMats(gMatchedPatterns[i], gMatchedSettings[i], '')
+	dataMat.extend(dm)
+	posMat.extend(pm)
+
+	dm_config, pm_config = buildBuildConfigMats(gMatchedPatterns[i], gMatchedSettings[i])
+	if len(dm)>0 and len(dm_config)>0:
+		dm_config[0][0] = ''	# remove pattern
+	dataMat.extend(dm_config)
+	posMat.extend(pm_config)
 
 if len(dataMat) > 1:
 
-	#for r in range(len(dataMat)):
-	#	for c in range(len(dataMat[0])):
-	#		print dataMat[r][c],
-	#	print
+	#	for r in range(len(dataMat)):
+	#		for c in range(len(dataMat[0])):
+	#			print dataMat[r][c],
+	#		print
 
 	widthColMat = toWidthColMat(dataMat)
 
@@ -313,20 +303,27 @@ if len(dataMat) > 1:
 					vim.command('echohl %s'%hlGroupsd['pattern'])
 					vim.command('echon \'%s\''%dataMat[r][c].ljust(maxColWidths[c]))
 				elif c==1:
-					if dataMat[r][c] in hlGroupsd:
-						categoryColor = hlGroupsd[dataMat[r][c]]
-						vim.command('echohl %s'%categoryColor)
-					vim.command('echon \'%s\''%dataMat[r][c].ljust(maxColWidths[c]))
-				else:
-					#vim.command('echohl %s'%hlGroupsd[''])
 					#vim.command('echon \'%s\''%dataMat[r][c].ljust(maxColWidths[c]))
+
+					categoryStr = dataMat[r][c].ljust(maxColWidths[c])
+
+					vim.command('echohl %s'%hlGroupsd['buildConfigNames'])
+					vim.command('echon \'%s\''%categoryStr[:posMat[r][c]])
+
+					if dataMat[r][c][posMat[r][c]:] in hlGroupsd:
+						categoryColor = hlGroupsd[dataMat[r][c][posMat[r][c]:]]
+						vim.command('echohl %s'%categoryColor)
+					vim.command('echon \'%s\''%categoryStr[posMat[r][c]:])
+				else:
+					#vim.command('echon \'%s\''%dataMat[r][c].ljust(maxColWidths[c]))
+
 					itemStr = dataMat[r][c].ljust(maxColWidths[c])
 					vim.command('echohl %s'%categoryColor)
-					vim.command('echon \'%s\''%itemStr[:itemKeywordPositions[r][0]])
+					vim.command('echon \'%s\''%itemStr[:posMat[r][c][0]])
 					vim.command('echohl %s'%hlGroupsd['shortcut'])
-					vim.command('echon \'%s\''%itemStr[itemKeywordPositions[r][0]:itemKeywordPositions[r][1]])
+					vim.command('echon \'%s\''%itemStr[posMat[r][c][0]:posMat[r][c][1]])
 					vim.command('echohl %s'%hlGroupsd['contents'])
-					vim.command('echon \'%s\''%itemStr[itemKeywordPositions[r][1]:])
+					vim.command('echon \'%s\''%itemStr[posMat[r][c][1]:])
 
 		vim.command('echo \'\'')
 
@@ -335,16 +332,7 @@ else:
 	vim.command('echo \'No matching patterns for the current window.\'')	
 
 vim.command('echohl None')
-
 EOF
-
-		"if r==0:	vim.command('echohl Title')
-		"s = ''
-		"for c in range(len(dataMat[0])):
-			"s += dataMat[r][c].ljust(maxColWidths[c])
-		"vim.command('echo \'%s\''%s)
-		"if r==0:	vim.command('echohl None')
-
 
 endfun
 
