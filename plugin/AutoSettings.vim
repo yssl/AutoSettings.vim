@@ -95,9 +95,11 @@ def buildSettingMats(pattern, setting, configName):
 	# dataMat[i][2]: vim command
 	dataMat = []
 
-	# posMat[i][1]: length of configName
-	# posMat[i][2][0]: length of vim command (like 'setlocal')
-	# posMat[i][2][1]: length of shortcut
+	# posMat[i][1]: end pos of configName
+	# posMat[i][2][0]: end pos of vim command (like 'setlocal')
+	# posMat[i][2][1]: end pos of shortcut
+	# posMat[i][2][2]: start pos of <ESC>
+	# posMat[i][2][3]: end pos of <ESC>
 	posMat = []
 
 	if 'setLocals' in setting:
@@ -109,7 +111,7 @@ def buildSettingMats(pattern, setting, configName):
 			setparam = setting['setLocals'][i]
 			vim_command = 'setlocal %s'%setparam
 			dataMat.append(['',category,vim_command])
-			posMat.append([None, 0, [8, 8]])
+			posMat.append([None, 0, [8, 8, 8, 8]])
 	if 'localMaps' in setting:
 		for i in range(len(setting['localMaps'])):
 			mapdata = setting['localMaps'][i]
@@ -123,11 +125,17 @@ def buildSettingMats(pattern, setting, configName):
 				mapcmd = mapdata[0][j]
 				if mapcmd[0]!='n':	# add <ESC> when non-normal mode mapping
 					command2 = '<ESC>'+command
+					lenEsc = 5
 				else:
 					command2 = command
+					lenEsc = 0
 				vim_command = '%s <buffer> %s %s'%(mapcmd, shortcut, command2)
 				dataMat.append(['',category,vim_command])
-				posMat.append([None, 0, [len(mapcmd)+9, len(mapcmd)+9+len(shortcut)+1]])
+				endPosCmd = len(mapcmd)+9
+				endPosScut = endPosCmd+len(shortcut)+1
+				startPosEsc = endPosScut
+				endPosEsc = startPosEsc + lenEsc+1
+				posMat.append([None, 0, [endPosCmd, endPosScut, startPosEsc, endPosEsc]])
 	if 'localMapsExpr' in setting:
 		for i in range(len(setting['localMapsExpr'])):
 			mapdata = setting['localMapsExpr'][i]
@@ -141,8 +149,10 @@ def buildSettingMats(pattern, setting, configName):
 				mapcmd = mapdata[0][j]
 				if mapcmd[0]!='n':	# add <ESC> when non-normal mode mapping
 					command2 = command[:1]+'<ESC>'+command[1:]
+					lenEsc = 5
 				else:
 					command2 = command
+					lenEsc = 0
 
 				command2 = repr(command2)
 				command2 = command2.replace('\\','\\\\')
@@ -151,7 +161,11 @@ def buildSettingMats(pattern, setting, configName):
 
 				vim_command = '%s <buffer> <expr> %s \'%s\''%(mapcmd, shortcut, command2)
 				dataMat.append(['',category,vim_command])
-				posMat.append([None, 0, [len(mapcmd)+9+7, len(mapcmd)+9+7+len(shortcut)+1]])
+				endPosCmd = len(mapcmd)+9+7
+				endPosScut = endPosCmd+len(shortcut)+1
+				startPosEsc = endPosScut
+				endPosEsc = endPosScut
+				posMat.append([None, 0, [endPosCmd, endPosScut, startPosEsc, endPosEsc]])
 
 	if len(dataMat) > 0:
 		dataMat[0][0] = pattern
@@ -234,6 +248,7 @@ hlGroupsd = {
 			'pattern':'Identifier',
 			'setLocals':'PreProc',
 			'localMaps':'Type','localMapsExpr':'Type',
+			'esc':'Comment',
 			'buildConfigNames':'Number','buildConfig':'Number',
 			'shortcut':'Function',
 			'contents':'None'
@@ -258,7 +273,7 @@ vim.command('echo \' \'')
 dataMat = []
 posMat = []
 dataMat.append([colLabelsd[type] for type in colTypes])
-posMat.append([None, 0, [0,0]])
+posMat.append([None, 0, [0,0,0,0]])
 
 for i in range(len(gMatchedPatterns)):
 
@@ -323,7 +338,11 @@ if len(dataMat) > 1:
 					vim.command('echohl %s'%hlGroupsd['shortcut'])
 					vim.command('echon \'%s\''%itemStr[posMat[r][c][0]:posMat[r][c][1]])
 					vim.command('echohl %s'%hlGroupsd['contents'])
-					vim.command('echon \'%s\''%itemStr[posMat[r][c][1]:])
+					vim.command('echon \'%s\''%itemStr[posMat[r][c][1]:posMat[r][c][2]])
+					vim.command('echohl %s'%hlGroupsd['esc'])
+					vim.command('echon \'%s\''%itemStr[posMat[r][c][2]:posMat[r][c][3]])
+					vim.command('echohl %s'%hlGroupsd['contents'])
+					vim.command('echon \'%s\''%itemStr[posMat[r][c][3]:])
 
 		vim.command('echo \'\'')
 
