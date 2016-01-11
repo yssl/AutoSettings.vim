@@ -154,17 +154,30 @@ def buildSettingMats(pattern, setting, configName):
 					command2 = command
 					lenEsc = 0
 
+				#print 'before0', command2
 				command2 = repr(command2)
+				#print 'before1', command2
 				command2 = command2.replace('\\','\\\\')
-				command2 = command2.replace('\'','\\\'')
-				#command2 = '\'%s\''%command2
+				command2 = command2.replace('\\','\\\\')
+				#print 'after0 ', command2
+				command2 = eval(command2)
+				#print 'after1 ', command2
+				#print ' '
 
-				vim_command = '%s <buffer> <expr> %s \'%s\''%(mapcmd, shortcut, command2)
+				# input: ':ConqueGdb '.split(system('make rprintbin'),'\n')[1].'<CR>'
+				# before0 ':ConqueGdb '.split(system('make rprintbin'),'                                                                                                                                                               
+				# ')[1].'<CR>'                                                                                                                                                                                                         
+				# before1 "':ConqueGdb '.split(system('make rprintbin'),'\n')[1].'<CR>'"                                                                                                                                               
+				# after0  "':ConqueGdb '.split(system('make rprintbin'),'\\\\n')[1].'<CR>'"                                                                                                                                            
+				# after1  ':ConqueGdb '.split(system('make rprintbin'),'\\n')[1].'<CR>'
+
+				vim_command = '%s <buffer> <expr> %s %s'%(mapcmd, shortcut, command2)
 				dataMat.append(['',category,vim_command])
 				endPosCmd = len(mapcmd)+9+7
 				endPosScut = endPosCmd+len(shortcut)+1
-				startPosEsc = endPosScut
-				endPosEsc = endPosScut
+				#startPosEsc = endPosScut
+				startPosEsc = endPosScut+2
+				endPosEsc = startPosEsc + lenEsc
 				posMat.append([None, 0, [endPosCmd, endPosScut, startPosEsc, endPosEsc]])
 
 	if len(dataMat) > 0:
@@ -258,12 +271,12 @@ bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
 winname = getWinName(bufname, buftype)
 vim.command('echohl %s'%hlGroupsd['title'])
-vim.command('echon \'AutoSettings \'')
+vim.command('echon "AutoSettings "')
 vim.command('echohl None')
-vim.command('echon \'for \'')
-vim.command('echon \'%s\''%winname)
-vim.command('echon \':\'')
-vim.command('echo \' \'')
+vim.command('echon "for "')
+vim.command('echon "%s"'%winname)
+vim.command('echon ":"')
+vim.command('echo " "')
 
 #for i in range(len(gMatchedPatterns)):
 #	print gMatchedPatterns[i]
@@ -306,49 +319,49 @@ if len(dataMat) > 1:
 	categoryColor = 'None'
 	for r in range(len(dataMat)):
 		if r==0:
-			vim.command('echo \'\'')
+			vim.command('echo ""')
 			vim.command('echohl %s'%hlGroupsd['labels'])
 			s = ''
 			for c in range(len(dataMat[0])):
 				s += dataMat[r][c].ljust(maxColWidths[c])
-			vim.command('echon \'%s\''%s)
+			vim.command('echon "%s"'%s)
 		else:
 			for c in range(len(dataMat[0])):
 				if c==0:
 					vim.command('echohl %s'%hlGroupsd['pattern'])
-					vim.command('echon \'%s\''%dataMat[r][c].ljust(maxColWidths[c]))
+					vim.command('echon "%s"'%dataMat[r][c].ljust(maxColWidths[c]))
 				elif c==1:
-					#vim.command('echon \'%s\''%dataMat[r][c].ljust(maxColWidths[c]))
+					#vim.command('echon "%s"'%dataMat[r][c].ljust(maxColWidths[c]))
 
 					categoryStr = dataMat[r][c].ljust(maxColWidths[c])
 
 					vim.command('echohl %s'%hlGroupsd['buildConfigNames'])
-					vim.command('echon \'%s\''%categoryStr[:posMat[r][c]])
+					vim.command('echon "%s"'%categoryStr[:posMat[r][c]])
 
 					if dataMat[r][c][posMat[r][c]:] in hlGroupsd:
 						categoryColor = hlGroupsd[dataMat[r][c][posMat[r][c]:]]
 						vim.command('echohl %s'%categoryColor)
-					vim.command('echon \'%s\''%categoryStr[posMat[r][c]:])
+					vim.command('echon "%s"'%categoryStr[posMat[r][c]:])
 				else:
-					#vim.command('echon \'%s\''%dataMat[r][c].ljust(maxColWidths[c]))
+					#vim.command('echon "%s"'%dataMat[r][c].ljust(maxColWidths[c]))
 
 					itemStr = dataMat[r][c].ljust(maxColWidths[c])
 					vim.command('echohl %s'%categoryColor)
-					vim.command('echon \'%s\''%itemStr[:posMat[r][c][0]])
+					vim.command('echon "%s"'%itemStr[:posMat[r][c][0]])
 					vim.command('echohl %s'%hlGroupsd['shortcut'])
-					vim.command('echon \'%s\''%itemStr[posMat[r][c][0]:posMat[r][c][1]])
+					vim.command('echon "%s"'%itemStr[posMat[r][c][0]:posMat[r][c][1]])
 					vim.command('echohl %s'%hlGroupsd['contents'])
-					vim.command('echon \'%s\''%itemStr[posMat[r][c][1]:posMat[r][c][2]])
+					vim.command('echon "%s"'%itemStr[posMat[r][c][1]:posMat[r][c][2]])
 					vim.command('echohl %s'%hlGroupsd['esc'])
-					vim.command('echon \'%s\''%itemStr[posMat[r][c][2]:posMat[r][c][3]])
+					vim.command('echon "%s"'%itemStr[posMat[r][c][2]:posMat[r][c][3]])
 					vim.command('echohl %s'%hlGroupsd['contents'])
-					vim.command('echon \'%s\''%itemStr[posMat[r][c][3]:])
+					vim.command('echon "%s"'%itemStr[posMat[r][c][3]:])
 
-		vim.command('echo \'\'')
+		vim.command('echo ""')
 
 else:
 	vim.command('echohl %s'%hlGroupsd['labels'])
-	vim.command('echo \'No matching patterns for the current window.\'')	
+	vim.command('echo "No matching patterns for the current window."')	
 
 vim.command('echohl None')
 EOF
