@@ -14,7 +14,34 @@ set cpo&vim
 " initialize python
 python << EOF
 import vim
-import os, fnmatch
+import os, fnmatch, ConfigParser
+
+# python global variables
+gConfFilePath = os.path.expanduser('~/.autosettings.vim.conf')
+gConfig = ConfigParser.ConfigParser()
+
+hlGroupsd = {
+			'title':'Title',
+			'labels':'Title',
+			'pattern':'Identifier',
+			'setLocals':'PreProc',
+			'localMaps':'Type','localMapsExpr':'Type',
+			'esc':'Comment',
+			'buildConfigNames':'Number',
+			'shortcut':'Function',
+			'contents':'None'
+			}
+
+gMatchedPatterns = []
+gMatchedSettings = []
+
+# python functions
+def loadPluginConfFile():
+	try:
+		with open(gConfFilePath, 'r') as f:
+			gConfig.readfp(f)
+	except EnvironmentError:
+		pass
 
 def getWinName(bufname, buftype):
 	if bufname==None:
@@ -73,13 +100,30 @@ def applySetting(setting):
 					command2 = command
 				vim.command('exec \'%s <buffer> <expr> %s \'%s\'\''%(mapcmd, shortcut, command2))
 
-def applyBuildConfig(setting):
+def applyBuildConfig(pattern, setting):
 	if 'buildConfigNames' in setting:
 		pass
 	if 'buildConfigs' in setting:
-		current_configname = setting['buildConfigNames'][0]
-		current_config = setting['buildConfigs'][current_configname]
-		applySetting(current_config)
+		#current_configname = setting['buildConfigNames'][0]
+		current_configname = getCurrentBuildConfigName(pattern, setting['buildConfigNames'])
+		if current_configname!=None and current_configname in setting['buildConfigs']:
+			current_config = setting['buildConfigs'][current_configname]
+			applySetting(current_config)
+
+def getCurrentBuildConfigName(pattern, buildConfigNames):
+	try:
+		return gConfig.get(pattern, 'currentBuildConfigName')
+	except ConfigParser.NoSectionError:
+		return buildConfigNames[0]
+
+def setCurrentBuildConfigName(pattern, newCurrentConfigName):
+	if not gConfig.has_section(pattern):
+		gConfig.add_section(pattern)
+	gConfig.set(pattern, 'currentBuildConfigName', newCurrentConfigName)
+
+	with open(gConfFilePath, 'w') as f:
+		gConfig.write(f)
+
 
 colTypes = ['pattern', 'category', 'command']
 colLabelsd = {
@@ -195,7 +239,8 @@ def buildBuildConfigMats(pattern, setting):
 	if 'buildConfigNames' in setting:
 		pass
 	if 'buildConfigs' in setting:
-		current_configname = setting['buildConfigNames'][0]
+		#current_configname = setting['buildConfigNames'][0]
+		current_configname = getCurrentBuildConfigName(pattern, setting['buildConfigNames'])
 		current_config = setting['buildConfigs'][current_configname]
 		return buildSettingMats(pattern, current_config, current_configname)
 	return [],[]
@@ -207,8 +252,7 @@ def toWidthColMat(rowMat):
 			colMat[c][r] = len(rowMat[r][c])
 	return colMat
 
-gMatchedPatterns = []
-gMatchedSettings = []
+loadPluginConfFile()
 EOF
 
 
@@ -222,6 +266,8 @@ endif
 
 " commands
 command! AutoSettingsPrint call s:PrintCurrentSetting()
+command! AutoSettingsShowConfigs call s:ShowConfigs()
+command! AutoSettingsChooseNextConfig call s:ChooseNextConfig()
 
 " autocmd
 augroup AutoSettingsAutoCmds
@@ -247,26 +293,65 @@ for patterns, setting in localsettings:
 			applySetting(setting)
 
 			# process 'buildConfigNames', 'buildConfigs'
-			applyBuildConfig(setting)
+			applyBuildConfig(pattern, setting)
 
 			break
 EOF
 endfun
 
+fun! s:ChooseNextConfig()
+python << EOF
+bufname = vim.current.buffer.name
+buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
+winname = getWinName(bufname, buftype)
+vim.command('echohl %s'%hlGroupsd['title'])
+vim.command('echon "AutoSettings "')
+vim.command('echohl None')
+vim.command('echon "for "')
+vim.command('echon "%s"'%winname)
+vim.command('echon ":"')
+vim.command('echo " "')
+
+for i in range(len(gMatchedSettings)):
+	if 'buildConfigNames' in gMatchedSettings[i]:
+		matchedPattern = gMatchedPatterns[i]
+		buildConfigNames = gMatchedSettings[i]['buildConfigNames']
+
+		currentConfigName = getCurrentBuildConfigName(matchedPattern, buildConfigNames)
+		print 'current ', currentConfigName
+
+		currentConfigIndex = buildConfigNames.index(currentConfigName)
+		nextConfigIndex = currentConfigIndex+1 if currentConfigIndex < len(buildConfigNames)-1 else 0
+		nextConfigName= buildConfigNames[nextConfigIndex]
+		setCurrentBuildConfigName(matchedPattern, nextConfigName)
+
+		print 'changed to', nextConfigName
+		break
+EOF
+endfun
+
+fun! s:ShowConfigs()
+python << EOF
+bufname = vim.current.buffer.name
+buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
+winname = getWinName(bufname, buftype)
+vim.command('echohl %s'%hlGroupsd['title'])
+vim.command('echon "AutoSettings "')
+vim.command('echohl None')
+vim.command('echon "for "')
+vim.command('echon "%s"'%winname)
+vim.command('echon ":"')
+vim.command('echo " "')
+
+for i in range(len(gMatchedSettings)):
+	if 'buildConfigNames' in gMatchedSettings[i]:
+		print gMatchedSettings[i]['buildConfigNames']
+		break
+EOF
+endfun
+
 fun! s:PrintCurrentSetting()
 python << EOF
-hlGroupsd = {
-			'title':'Title',
-			'labels':'Title',
-			'pattern':'Identifier',
-			'setLocals':'PreProc',
-			'localMaps':'Type','localMapsExpr':'Type',
-			'esc':'Comment',
-			'buildConfigNames':'Number','buildConfig':'Number',
-			'shortcut':'Function',
-			'contents':'None'
-			}
-
 bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
 winname = getWinName(bufname, buftype)
