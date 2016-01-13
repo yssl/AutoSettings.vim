@@ -57,6 +57,12 @@ def getWinName(bufname, buftype):
 			winname = bufname
 	return winname
 
+def getCurrentWinName():
+	bufname = vim.current.buffer.name
+	buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
+	winname = getWinName(bufname, buftype)
+	return winname
+
 # setting: vimscript dictionary
 # ex) {
 #		\'localMaps':[
@@ -260,9 +266,6 @@ EOF
 if !exists('g:autosettings_settings')
 	let g:autosettings_settings = []
 endif
-if !exists('g:autosettings_for_build')
-	let g:autosettings_for_build = []
-endif
 
 " commands
 command! AutoSettingsPrint call s:PrintCurrentSetting()
@@ -355,12 +358,7 @@ python << EOF
 bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
 winname = getWinName(bufname, buftype)
-vim.command('echohl %s'%hlGroupsd['title'])
-vim.command('echon "AutoSettings "')
-vim.command('echohl None')
-vim.command('echon "for "')
-vim.command('echon "%s"'%winname)
-vim.command('echon ":"')
+vim.command('echon "AutoSettings.vim: Settings for %s:"'%winname)
 vim.command('echo " "')
 
 #for i in range(len(gMatchedPatterns)):
