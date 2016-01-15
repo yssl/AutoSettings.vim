@@ -307,29 +307,36 @@ python << EOF
 bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
 winname = getWinName(bufname, buftype)
-vim.command('echohl %s'%hlGroupsd['title'])
-vim.command('echon "AutoSettings "')
-vim.command('echohl None')
-vim.command('echon "for "')
-vim.command('echon "%s"'%winname)
-vim.command('echon ":"')
-vim.command('echo " "')
 
+noConfigs = True
 for i in range(len(gMatchedSettings)):
 	if 'buildConfigNames' in gMatchedSettings[i]:
+
 		matchedPattern = gMatchedPatterns[i]
 		buildConfigNames = gMatchedSettings[i]['buildConfigNames']
 
 		currentConfigName = getCurrentBuildConfigName(matchedPattern, buildConfigNames)
-		print 'current ', currentConfigName
+		#print 'current ', currentConfigName
 
 		currentConfigIndex = buildConfigNames.index(currentConfigName)
+
 		nextConfigIndex = currentConfigIndex+1 if currentConfigIndex < len(buildConfigNames)-1 else 0
 		nextConfigName= buildConfigNames[nextConfigIndex]
+
 		setCurrentBuildConfigName(matchedPattern, nextConfigName)
 
-		print 'changed to', nextConfigName
+		#print 'changed to', nextConfigName
+		vim.command('echon "AutoSettings.vim: "')
+		vim.command('echohl %s'%hlGroupsd['buildConfigNames'])
+		vim.command('echon "%s "'%nextConfigName)
+		vim.command('echohl None')
+		vim.command('echon "build for %s"'%matchedPattern)
+
+		noConfigs = False
 		break
+
+if noConfigs:
+	vim.command('echo "AutoSettings.vim: Cannot move to next build configuration."')
 EOF
 endfun
 
@@ -347,6 +354,7 @@ for i in range(len(gMatchedSettings)):
 
 		vim.command('echohl %s'%hlGroupsd['labels'])
 		vim.command('echo "  #  Build Configuration"')
+		vim.command('echo ""')
 		vim.command('echohl None')
 
 		currentConfigName = getCurrentBuildConfigName(gMatchedPatterns[i], buildConfigNames)
@@ -356,7 +364,11 @@ for i in range(len(gMatchedSettings)):
 				startChar = '*'
 			else:
 				startChar = ' '
-			vim.command('echo "%s %d  %s"'%(startChar, i+1, buildConfigNames[i]))
+			vim.command('echon "%s %d  "'%(startChar, i+1))
+			vim.command('echohl %s'%hlGroupsd['buildConfigNames'])
+			vim.command('echon "%s"'%buildConfigNames[i])
+			vim.command('echo ""')
+			vim.command('echohl None')
 
 		# prompt
 		message = 'Type # of configuration to choose or press ENTER to exit'
