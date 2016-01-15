@@ -270,7 +270,7 @@ endif
 " commands
 command! AutoSettingsPrint call s:PrintCurrentSetting()
 command! AutoSettingsShowConfigs call s:ShowConfigs()
-command! AutoSettingsChooseNextConfig call s:ChooseNextConfig()
+command! AutoSettingsNextConfig call s:NextConfig()
 
 " autocmd
 augroup AutoSettingsAutoCmds
@@ -302,7 +302,7 @@ for patterns, setting in localsettings:
 EOF
 endfun
 
-fun! s:ChooseNextConfig()
+fun! s:NextConfig()
 python << EOF
 bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
@@ -338,18 +338,41 @@ python << EOF
 bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
 winname = getWinName(bufname, buftype)
-vim.command('echohl %s'%hlGroupsd['title'])
-vim.command('echon "AutoSettings "')
-vim.command('echohl None')
-vim.command('echon "for "')
-vim.command('echon "%s"'%winname)
-vim.command('echon ":"')
-vim.command('echo " "')
 
+noConfigs = True
 for i in range(len(gMatchedSettings)):
 	if 'buildConfigNames' in gMatchedSettings[i]:
-		print gMatchedSettings[i]['buildConfigNames']
+		vim.command('echo "AutoSettings.vim: Build configurations of %s (for %s):"'%(gMatchedPatterns[i], winname))
+		vim.command('echo " "')
+
+		vim.command('echohl %s'%hlGroupsd['labels'])
+		vim.command('echo "  #  Build Configuration"')
+		vim.command('echohl None')
+
+		currentConfigName = getCurrentBuildConfigName(gMatchedPatterns[i], buildConfigNames)
+		buildConfigNames = gMatchedSettings[i]['buildConfigNames']
+		for i in range(len(buildConfigNames)):
+			if buildConfigNames[i]==currentConfigName:
+				startChar = '*'
+			else:
+				startChar = ' '
+			vim.command('echo "%s %d  %s"'%(startChar, i+1, buildConfigNames[i]))
+
+		# prompt
+		message = 'Type # of configuration to choose or press ENTER to exit'
+		vim.command('call inputsave()')
+		vim.command("let user_input = input('" + message + ": ')")
+		vim.command('call inputrestore()')
+		user_input = vim.eval('user_input')
+		if user_input.isdigit():
+			choosenConfigIndex = int(user_input)-1
+			setCurrentBuildConfigName(gMatchedPatterns[i], buildConfigNames[choosenConfigIndex])
+
+		noConfigs = False
 		break
+
+if noConfigs:
+	vim.command('echo "AutoSettings.vim: No build configurations for %s"'%winname)
 EOF
 endfun
 
@@ -358,8 +381,6 @@ python << EOF
 bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
 winname = getWinName(bufname, buftype)
-vim.command('echon "AutoSettings.vim: Settings for %s:"'%winname)
-vim.command('echo " "')
 
 #for i in range(len(gMatchedPatterns)):
 #	print gMatchedPatterns[i]
@@ -384,6 +405,8 @@ for i in range(len(gMatchedPatterns)):
 	posMat.extend(pm_config)
 
 if len(dataMat) > 1:
+	vim.command('echo "AutoSettings.vim: Applied settings for %s:"'%winname)
+	vim.command('echo " "')
 
 	#	for r in range(len(dataMat)):
 	#		for c in range(len(dataMat[0])):
@@ -443,8 +466,9 @@ if len(dataMat) > 1:
 		vim.command('echo ""')
 
 else:
-	vim.command('echohl %s'%hlGroupsd['labels'])
-	vim.command('echo "No matching patterns for the current window."')	
+	vim.command('echo "AutoSettings.vim: No applied settings for %s"'%winname)
+#	vim.command('echohl %s'%hlGroupsd['labels'])
+#	vim.command('echo "No matching patterns for the current window."')	
 
 vim.command('echohl None')
 EOF
