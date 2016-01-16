@@ -4,7 +4,7 @@
 " License:      MIT License
 
 if exists("g:loaded_autosettings") || &cp
-	"finish
+	finish
 endif
 let g:loaded_autosettings	= 1
 let s:keepcpo           = &cpo
@@ -20,7 +20,7 @@ import os, fnmatch, ConfigParser
 gConfFilePath = os.path.expanduser('~/.autosettings.vim.conf')
 gConfig = ConfigParser.ConfigParser()
 
-hlGroupsd = {
+gHlGroupsd = {
 			'title':'Title',
 			'labels':'Title',
 			'pattern':'Identifier',
@@ -269,7 +269,7 @@ endif
 
 " commands
 command! AutoSettingsPrint call s:PrintCurrentSetting()
-command! AutoSettingsShowConfigs call s:ShowConfigs()
+command! AutoSettingsListConfigs call s:ListConfigs()
 command! AutoSettingsNextConfig call s:NextConfig()
 
 " autocmd
@@ -304,10 +304,6 @@ endfun
 
 fun! s:NextConfig()
 python << EOF
-bufname = vim.current.buffer.name
-buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
-winname = getWinName(bufname, buftype)
-
 noConfigs = True
 for i in range(len(gMatchedSettings)):
 	if 'buildConfigNames' in gMatchedSettings[i]:
@@ -326,21 +322,26 @@ for i in range(len(gMatchedSettings)):
 		setCurrentBuildConfigName(matchedPattern, nextConfigName)
 
 		#print 'changed to', nextConfigName
-		vim.command('echon "AutoSettings.vim: "')
-		vim.command('echohl %s'%hlGroupsd['buildConfigNames'])
+
+		vim.command('echon "AutoSettings.vim: Current build configuration: "')
+		vim.command('echohl %s'%gHlGroupsd['buildConfigNames'])
 		vim.command('echon "%s "'%nextConfigName)
 		vim.command('echohl None')
-		vim.command('echon "build for %s"'%matchedPattern)
+		vim.command('echon "(registerd with "')
+		vim.command('echohl %s'%gHlGroupsd['pattern'])
+		vim.command('echon "%s"'%matchedPattern)
+		vim.command('echohl None')
+		vim.command('echon ")"')
 
 		noConfigs = False
 		break
 
 if noConfigs:
-	vim.command('echo "AutoSettings.vim: Cannot move to next build configuration."')
+	vim.command('echo "AutoSettings.vim: No build configurations"')
 EOF
 endfun
 
-fun! s:ShowConfigs()
+fun! s:ListConfigs()
 python << EOF
 bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
@@ -349,23 +350,27 @@ winname = getWinName(bufname, buftype)
 noConfigs = True
 for i in range(len(gMatchedSettings)):
 	if 'buildConfigNames' in gMatchedSettings[i]:
-		vim.command('echo "AutoSettings.vim: Build configurations of %s (for %s):"'%(gMatchedPatterns[i], winname))
+		vim.command('echon "AutoSettings.vim: Build configurations for %s (registerd with "'%winname)
+		vim.command('echohl %s'%gHlGroupsd['pattern'])
+		vim.command('echon "%s"'%gMatchedPatterns[i])
+		vim.command('echohl None')
+		vim.command('echon "):"')
 		vim.command('echo " "')
 
-		vim.command('echohl %s'%hlGroupsd['labels'])
+		vim.command('echohl %s'%gHlGroupsd['labels'])
 		vim.command('echo "  #  Build Configuration"')
 		vim.command('echo ""')
 		vim.command('echohl None')
 
-		currentConfigName = getCurrentBuildConfigName(gMatchedPatterns[i], buildConfigNames)
 		buildConfigNames = gMatchedSettings[i]['buildConfigNames']
+		currentConfigName = getCurrentBuildConfigName(gMatchedPatterns[i], buildConfigNames)
 		for i in range(len(buildConfigNames)):
 			if buildConfigNames[i]==currentConfigName:
 				startChar = '*'
 			else:
 				startChar = ' '
 			vim.command('echon "%s %d  "'%(startChar, i+1))
-			vim.command('echohl %s'%hlGroupsd['buildConfigNames'])
+			vim.command('echohl %s'%gHlGroupsd['buildConfigNames'])
 			vim.command('echon "%s"'%buildConfigNames[i])
 			vim.command('echo ""')
 			vim.command('echohl None')
@@ -417,7 +422,7 @@ for i in range(len(gMatchedPatterns)):
 	posMat.extend(pm_config)
 
 if len(dataMat) > 1:
-	vim.command('echo "AutoSettings.vim: Applied settings for %s:"'%winname)
+	vim.command('echo "AutoSettings.vim: Settings applied to %s:"'%winname)
 	vim.command('echo " "')
 
 	#	for r in range(len(dataMat)):
@@ -438,7 +443,7 @@ if len(dataMat) > 1:
 	for r in range(len(dataMat)):
 		if r==0:
 			vim.command('echo ""')
-			vim.command('echohl %s'%hlGroupsd['labels'])
+			vim.command('echohl %s'%gHlGroupsd['labels'])
 			s = ''
 			for c in range(len(dataMat[0])):
 				s += dataMat[r][c].ljust(maxColWidths[c])
@@ -446,18 +451,18 @@ if len(dataMat) > 1:
 		else:
 			for c in range(len(dataMat[0])):
 				if c==0:
-					vim.command('echohl %s'%hlGroupsd['pattern'])
+					vim.command('echohl %s'%gHlGroupsd['pattern'])
 					vim.command('echon "%s"'%dataMat[r][c].ljust(maxColWidths[c]))
 				elif c==1:
 					#vim.command('echon "%s"'%dataMat[r][c].ljust(maxColWidths[c]))
 
 					categoryStr = dataMat[r][c].ljust(maxColWidths[c])
 
-					vim.command('echohl %s'%hlGroupsd['buildConfigNames'])
+					vim.command('echohl %s'%gHlGroupsd['buildConfigNames'])
 					vim.command('echon "%s"'%categoryStr[:posMat[r][c]])
 
-					if dataMat[r][c][posMat[r][c]:] in hlGroupsd:
-						categoryColor = hlGroupsd[dataMat[r][c][posMat[r][c]:]]
+					if dataMat[r][c][posMat[r][c]:] in gHlGroupsd:
+						categoryColor = gHlGroupsd[dataMat[r][c][posMat[r][c]:]]
 						vim.command('echohl %s'%categoryColor)
 					vim.command('echon "%s"'%categoryStr[posMat[r][c]:])
 				else:
@@ -466,20 +471,20 @@ if len(dataMat) > 1:
 					itemStr = dataMat[r][c].ljust(maxColWidths[c])
 					vim.command('echohl %s'%categoryColor)
 					vim.command('echon "%s"'%itemStr[:posMat[r][c][0]])
-					vim.command('echohl %s'%hlGroupsd['shortcut'])
+					vim.command('echohl %s'%gHlGroupsd['shortcut'])
 					vim.command('echon "%s"'%itemStr[posMat[r][c][0]:posMat[r][c][1]])
-					vim.command('echohl %s'%hlGroupsd['contents'])
+					vim.command('echohl %s'%gHlGroupsd['contents'])
 					vim.command('echon "%s"'%itemStr[posMat[r][c][1]:posMat[r][c][2]])
-					vim.command('echohl %s'%hlGroupsd['esc'])
+					vim.command('echohl %s'%gHlGroupsd['esc'])
 					vim.command('echon "%s"'%itemStr[posMat[r][c][2]:posMat[r][c][3]])
-					vim.command('echohl %s'%hlGroupsd['contents'])
+					vim.command('echohl %s'%gHlGroupsd['contents'])
 					vim.command('echon "%s"'%itemStr[posMat[r][c][3]:])
 
 		vim.command('echo ""')
 
 else:
-	vim.command('echo "AutoSettings.vim: No applied settings for %s"'%winname)
-#	vim.command('echohl %s'%hlGroupsd['labels'])
+	vim.command('echo "AutoSettings.vim: No settings applied to %s"'%winname)
+#	vim.command('echohl %s'%gHlGroupsd['labels'])
 #	vim.command('echo "No matching patterns for the current window."')	
 
 vim.command('echohl None')
