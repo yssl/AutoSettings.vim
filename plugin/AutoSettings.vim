@@ -350,7 +350,7 @@ winname = getWinName(bufname, buftype)
 noConfigs = True
 for i in range(len(gMatchedSettings)):
 	if 'buildConfigNames' in gMatchedSettings[i]:
-		vim.command('echon "AutoSettings.vim: Build configurations for %s (registerd with "'%winname)
+		vim.command('echon "AutoSettings.vim: Build configurations for %s (registerd with "'%repr(winname))
 		vim.command('echohl %s'%gHlGroupsd['pattern'])
 		vim.command('echon "%s"'%gMatchedPatterns[i])
 		vim.command('echohl None')
@@ -389,7 +389,7 @@ for i in range(len(gMatchedSettings)):
 		break
 
 if noConfigs:
-	vim.command('echo "AutoSettings.vim: No build configurations for %s"'%winname)
+	vim.command('echo "AutoSettings.vim: No build configurations for %s"'%repr(winname))
 EOF
 endfun
 
@@ -422,7 +422,7 @@ for i in range(len(gMatchedPatterns)):
 	posMat.extend(pm_config)
 
 if len(dataMat) > 1:
-	vim.command('echo "AutoSettings.vim: Settings applied to %s:"'%winname)
+	vim.command('echo "AutoSettings.vim: Settings applied to %s:"'%repr(winname))
 	vim.command('echo " "')
 
 	#	for r in range(len(dataMat)):
@@ -483,7 +483,7 @@ if len(dataMat) > 1:
 		vim.command('echo ""')
 
 else:
-	vim.command('echo "AutoSettings.vim: No settings applied to %s"'%winname)
+	vim.command('echo "AutoSettings.vim: No settings applied to %s"'%repr(winname))
 #	vim.command('echohl %s'%gHlGroupsd['labels'])
 #	vim.command('echo "No matching patterns for the current window."')	
 
