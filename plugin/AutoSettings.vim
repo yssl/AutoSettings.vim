@@ -11,14 +11,60 @@ let s:keepcpo           = &cpo
 set cpo&vim
 """""""""""""""""""""""""""""""""""""""""""""
 
+" vim version checking
+if !has('python3') && !has('python')
+	echohl WarningMsg
+	echomsg 'AutoSettings.vim unavailable: requires vim with Python support'
+	echohl None
+	finish
+endif
+
+" global variables
+if !exists('g:autosettings_settings')
+	let g:autosettings_settings = []
+endif
+
+" commands
+command! AutoSettingsPrint call s:PrintCurrentSetting()
+command! AutoSettingsListConfigs call s:ListConfigs()
+command! AutoSettingsNextConfig call s:NextConfig()
+
+" autocmd
+augroup AutoSettingsAutoCmds
+	autocmd!
+	autocmd BufEnter * call s:UpdateSetting()
+augroup END
+
+" Support for Python3 and Python2
+" from https://github.com/Valloric/YouCompleteMe
+function! s:UsingPython3()
+	if has('python3')
+		return 1
+	endif
+	return 0
+endfunction
+let s:using_python3 = s:UsingPython3()
+let s:pythonX_until_EOF = s:using_python3 ? "python3 << EOF" : "python << EOF"
+
+" import configparser differently in python 2 and python 3
+if s:using_python3
+exec s:pythonX_until_EOF
+import configparser as cp
+EOF
+else
+exec s:pythonX_until_EOF
+import ConfigParser as cp
+EOF
+endif
+
 " initialize python
-python << EOF
+exec s:pythonX_until_EOF
 import vim
-import os, fnmatch, ConfigParser
+import os, fnmatch
 
 # python global variables
 gConfFilePath = os.path.expanduser('~/.autosettings.vim.conf')
-gConfig = ConfigParser.ConfigParser()
+gConfig = cp.ConfigParser()
 
 gHlGroupsd = {
 			'title':'Title',
@@ -81,7 +127,7 @@ def getCurrentWinName():
 # example for <expr> mapping - following two statements are identical
 # exec 'nnoremap <buffer> <expr> <Leader>sc ":echo expand(\"%:p\")\<CR>"'
 # exec 'nnoremap <buffer> <Leader>sc :echo expand("%:p")<CR>'
-def applySetting(setting):
+def AapplySetting(setting):
 	if 'setLocals' in setting:
 		for setparam in setting['setLocals']:
 			vim.command('exec \'setlocal %s\''%setparam)
@@ -106,7 +152,7 @@ def applySetting(setting):
 					command2 = command
 				vim.command('exec \'%s <buffer> <expr> %s \'%s\'\''%(mapcmd, shortcut, command2))
 
-def applyBuildConfig(pattern, setting):
+def AapplyBuildConfig(pattern, setting):
 	if 'buildConfigNames' in setting:
 		pass
 	if 'buildConfigs' in setting:
@@ -114,12 +160,12 @@ def applyBuildConfig(pattern, setting):
 		current_configname = getCurrentBuildConfigName(pattern, setting['buildConfigNames'])
 		if current_configname!=None and current_configname in setting['buildConfigs']:
 			current_config = setting['buildConfigs'][current_configname]
-			applySetting(current_config)
+			AapplySetting(current_config)
 
 def getCurrentBuildConfigName(pattern, buildConfigNames):
 	try:
 		return gConfig.get(pattern, 'currentBuildConfigName')
-	except ConfigParser.NoSectionError:
+	except cp.NoSectionError:
 		return buildConfigNames[0]
 
 def setCurrentBuildConfigName(pattern, newCurrentConfigName):
@@ -215,9 +261,9 @@ def buildSettingMats(pattern, setting, configName):
 				#print ' '
 
 				# input: ':ConqueGdb '.split(system('make rprintbin'),'\n')[1].'<CR>'
-				# before0 ':ConqueGdb '.split(system('make rprintbin'),'                                                                                                                                                               
-				# ')[1].'<CR>'                                                                                                                                                                                                         
-				# before1 "':ConqueGdb '.split(system('make rprintbin'),'\n')[1].'<CR>'"                                                                                                                                               
+				# before0 ':ConqueGdb '.split(system('make rprintbin'),'
+				# ')[1].'<CR>'
+				# before1 "':ConqueGdb '.split(system('make rprintbin'),'\n')[1].'<CR>'"
 				# after0  "':ConqueGdb '.split(system('make rprintbin'),'\\\\n')[1].'<CR>'"                                                                                                                                            
 				# after1  ':ConqueGdb '.split(system('make rprintbin'),'\\n')[1].'<CR>'
 
@@ -262,25 +308,9 @@ loadPluginConfFile()
 EOF
 
 
-" global variables
-if !exists('g:autosettings_settings')
-	let g:autosettings_settings = []
-endif
-
-" commands
-command! AutoSettingsPrint call s:PrintCurrentSetting()
-command! AutoSettingsListConfigs call s:ListConfigs()
-command! AutoSettingsNextConfig call s:NextConfig()
-
-" autocmd
-augroup AutoSettingsAutoCmds
-	autocmd!
-	autocmd BufEnter * call s:UpdateSetting()
-augroup END
-
 " functions
 fun! s:UpdateSetting()
-python << EOF
+exec s:pythonX_until_EOF
 filepath = vim.eval('expand(\'<afile>:p\')')
 del gMatchedPatterns[:]
 del gMatchedSettings[:]
@@ -291,19 +321,19 @@ for patterns, setting in localsettings:
 		if fnmatch.fnmatch(filepath, pattern):
 			gMatchedPatterns.append(pattern)
 			gMatchedSettings.append(setting)
-
+			
 			# process 'setLocals', 'localMaps', 'localMapsExpr'
-			applySetting(setting)
-
+			AapplySetting(setting)
+			
 			# process 'buildConfigNames', 'buildConfigs'
-			applyBuildConfig(pattern, setting)
-
+			AapplyBuildConfig(pattern, setting)
+			
 			break
 EOF
 endfun
 
 fun! s:NextConfig()
-python << EOF
+exec s:pythonX_until_EOF
 noConfigs = True
 for i in range(len(gMatchedSettings)):
 	if 'buildConfigNames' in gMatchedSettings[i]:
@@ -342,7 +372,7 @@ EOF
 endfun
 
 fun! s:ListConfigs()
-python << EOF
+exec s:pythonX_until_EOF
 bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
 winname = getWinName(bufname, buftype)
@@ -394,7 +424,7 @@ EOF
 endfun
 
 fun! s:PrintCurrentSetting()
-python << EOF
+exec s:pythonX_until_EOF
 bufname = vim.current.buffer.name
 buftype = vim.eval('getbufvar(winbufnr("%"), \'&buftype\')')
 winname = getWinName(bufname, buftype)
